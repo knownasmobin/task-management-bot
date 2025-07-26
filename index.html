@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Task Manager</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Core utilities and constants -->
+    <script src="constants.js"></script>
+    <script src="utils.js"></script>
+    
+    <!-- Models -->
+    <script src="models/Task.js"></script>
+    <script src="models/User.js"></script>
+    <script src="models/Group.js"></script>
+    
+    <!-- Services -->
+    <script src="services/TaskService.js"></script>
+    <script src="services/GroupService.js"></script>
+    <script src="services/DeadlineService.js"></script>
+    
+    <!-- App modules -->
+    <script src="config.js"></script>
+    <script src="phone-verification.js"></script>
+    <script src="auth.js"></script>
+    <script src="realtime-sync.js"></script>
+    <script src="push-notifications.js"></script>
+    <script src="telegram-bot.js"></script>
+    <script src="webhook-handler.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1 class="app-title">
+                    <span class="icon">📋</span>
+                    Task Manager
+                </h1>
+                <button class="menu-btn" id="menuBtn">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="tasks">
+                <span class="tab-icon">✅</span>
+                Tasks
+            </button>
+            <button class="tab-btn" data-tab="groups">
+                <span class="tab-icon">📁</span>
+                Groups
+            </button>
+            <button class="tab-btn" data-tab="team">
+                <span class="tab-icon">👥</span>
+                Team
+            </button>
+            <button class="tab-btn" data-tab="stats">
+                <span class="tab-icon">📊</span>
+                Stats
+            </button>
+            <button class="tab-btn" data-tab="notifications">
+                <span class="tab-icon">🔔</span>
+                Notifications
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Tasks Tab -->
+            <div class="tab-content active" id="tasks">
+                <div class="section-header">
+                    <h2>My Tasks</h2>
+                    <button class="add-task-btn" id="addTaskBtn">
+                        <span class="plus-icon">+</span>
+                        Add Task
+                    </button>
+                </div>
+
+                <!-- Filter Controls -->
+                <div class="filter-controls">
+                    <!-- Group Filter -->
+                    <div class="group-filter">
+                        <label for="groupFilter">Group:</label>
+                        <select id="groupFilter" class="group-select">
+                            <option value="all">All Groups</option>
+                            <option value="ungrouped">Ungrouped</option>
+                            <!-- Groups will be populated dynamically -->
+                        </select>
+                    </div>
+
+                    <!-- Status Filter Buttons -->
+                    <div class="status-filter-buttons">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="pending">Pending</button>
+                        <button class="filter-btn" data-filter="in-progress">In Progress</button>
+                        <button class="filter-btn" data-filter="completed">Completed</button>
+                    </div>
+                </div>
+
+                <!-- Task List -->
+                <div class="task-list" id="taskList">
+                    <!-- Tasks will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Groups Tab -->
+            <div class="tab-content" id="groups">
+                <div class="section-header">
+                    <h2>Groups</h2>
+                    <button class="add-group-btn" id="addGroupBtn">
+                        <span class="plus-icon">+</span>
+                        Create Group
+                    </button>
+                </div>
+
+                <!-- Group Controls -->
+                <div class="group-controls">
+                    <div class="group-view-toggle">
+                        <button class="view-btn active" data-view="grid">📱 Grid</button>
+                        <button class="view-btn" data-view="list">📋 List</button>
+                    </div>
+                    <div class="group-search">
+                        <input type="text" id="groupSearch" placeholder="Search groups..." class="search-input">
+                    </div>
+                </div>
+
+                <!-- Groups List -->
+                <div class="groups-container" id="groupsContainer">
+                    <div class="groups-grid" id="groupsGrid">
+                        <!-- Groups will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team Tab -->
+            <div class="tab-content" id="team">
+                <div class="section-header">
+                    <h2>Team Members</h2>
+                    <button class="invite-btn" id="inviteBtn">
+                        <span class="plus-icon">+</span>
+                        Invite
+                    </button>
+                </div>
+
+                <div class="team-list" id="teamList">
+                    <!-- Team members will be dynamically added here -->
+                </div>
+            </div>
+
+            <!-- Stats Tab -->
+            <div class="tab-content" id="stats">
+                <div class="section-header">
+                    <h2>Statistics</h2>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalTasks">0</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="completedTasks">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="pendingTasks">0</div>
+                        <div class="stat-label">Pending</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="teamSize">0</div>
+                        <div class="stat-label">Team Members</div>
+                    </div>
+                </div>
+
+                <div class="progress-section">
+                    <h3>Weekly Progress</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="weeklyProgress"></div>
+                    </div>
+                    <div class="progress-text">
+                        <span id="progressPercentage">0%</span> completed this week
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications Tab -->
+            <div class="tab-content" id="notifications">
+                <div class="section-header">
+                    <h2>Notifications</h2>
+                    <button class="clear-history-btn" id="clearHistoryBtn">
+                        <span class="icon">🗑️</span>
+                        Clear History
+                    </button>
+                </div>
+
+                <!-- Notification Settings -->
+                <div class="notification-settings">
+                    <h3>Settings</h3>
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="notificationsEnabled" checked>
+                                <span>Enable Notifications</span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="taskAssignedNotif" checked>
+                                <span>Task Assignments</span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="taskCompletedNotif" checked>
+                                <span>Task Completions</span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="taskOverdueNotif" checked>
+                                <span>Overdue Tasks</span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="teamJoinedNotif" checked>
+                                <span>Team Changes</span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="dailySummaryNotif">
+                                <span>Daily Summary</span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="soundEnabled" checked>
+                                <span>Sound</span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <label class="setting-label">
+                                <input type="checkbox" id="vibrationEnabled" checked>
+                                <span>Vibration</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="quiet-hours-section">
+                        <h4>Quiet Hours</h4>
+                        <div class="quiet-hours-controls">
+                            <label class="setting-label">
+                                <input type="checkbox" id="quietHoursEnabled">
+                                <span>Enable Quiet Hours</span>
+                            </label>
+                            <div class="time-inputs">
+                                <label>From: <input type="time" id="quietHoursStart" value="22:00"></label>
+                                <label>To: <input type="time" id="quietHoursEnd" value="08:00"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification History -->
+                <div class="notification-history">
+                    <h3>Recent Notifications</h3>
+                    <div class="notifications-list" id="notificationsList">
+                        <!-- Notifications will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Real-time Status -->
+                <div class="realtime-status">
+                    <h3>Real-time Status</h3>
+                    <div class="status-indicators">
+                        <div class="status-item">
+                            <span class="status-label">Connection:</span>
+                            <span class="status-value" id="connectionStatusDisplay">Connecting...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Last Sync:</span>
+                            <span class="status-value" id="lastSyncDisplay">Never</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Notifications:</span>
+                            <span class="status-value" id="notificationStatusDisplay">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Task Modal -->
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add New Task</h3>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="taskForm">
+                    <div class="form-group">
+                        <label for="taskTitle">Title</label>
+                        <input type="text" id="taskTitle" placeholder="Enter task title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDescription">Description</label>
+                        <textarea id="taskDescription" placeholder="Enter task description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskGroup">Group</label>
+                        <select id="taskGroup">
+                            <option value="">No Group</option>
+                            <!-- Groups will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskAssignee">Assign to</label>
+                        <select id="taskAssignee">
+                            <option value="me">Me</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskPriority">Priority</label>
+                        <select id="taskPriority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDueDate">Due Date</label>
+                        <input type="datetime-local" id="taskDueDate">
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="enableReminders" checked>
+                            Enable deadline reminders
+                        </label>
+                    </div>
+                    <div class="reminder-settings" id="reminderSettings" style="display: block;">
+                        <h4>Reminder Settings</h4>
+                        <div class="reminder-intervals">
+                            <div class="reminder-interval">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" class="reminder-enabled" data-unit="day" data-value="1" checked>
+                                    1 day before
+                                </label>
+                            </div>
+                            <div class="reminder-interval">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" class="reminder-enabled" data-unit="hour" data-value="2" checked>
+                                    2 hours before
+                                </label>
+                            </div>
+                            <div class="reminder-interval">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" class="reminder-enabled" data-unit="minute" data-value="15">
+                                    15 minutes before
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelTask">Cancel</button>
+                        <button type="submit" class="btn-primary">Save Task</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Modal -->
+    <div class="modal-overlay" id="groupModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="groupModalTitle">Create New Group</h3>
+                <button class="close-btn" id="closeGroupModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="groupForm">
+                    <div class="form-group">
+                        <label for="groupName">Group Name</label>
+                        <input type="text" id="groupName" placeholder="Enter group name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="groupDescription">Description</label>
+                        <textarea id="groupDescription" placeholder="Enter group description" rows="3"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="groupColor">Color</label>
+                            <input type="color" id="groupColor" value="#3b82f6">
+                        </div>
+                        <div class="form-group">
+                            <label for="groupIcon">Icon</label>
+                            <select id="groupIcon">
+                                <option value="📁">📁 Folder</option>
+                                <option value="🚀">🚀 Project</option>
+                                <option value="💼">💼 Work</option>
+                                <option value="🏠">🏠 Personal</option>
+                                <option value="🎯">🎯 Goals</option>
+                                <option value="📚">📚 Learning</option>
+                                <option value="🛠️">🛠️ Development</option>
+                                <option value="📊">📊 Analytics</option>
+                                <option value="🎨">🎨 Creative</option>
+                                <option value="⚡">⚡ Urgent</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Group Settings</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="allowMemberInvite" checked>
+                                Allow members to invite others
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="requireApprovalForTasks">
+                                Require approval for new tasks
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="notifyOnTaskUpdates" checked>
+                                Notify on task updates
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelGroup">Cancel</button>
+                        <button type="submit" class="btn-primary">Create Group</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Management Modal -->
+    <div class="modal-overlay" id="groupManageModal">
+        <div class="modal large-modal">
+            <div class="modal-header">
+                <h3 id="groupManageTitle">Manage Group</h3>
+                <button class="close-btn" id="closeGroupManageModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="group-manage-tabs">
+                    <button class="tab-btn active" data-tab="info">📝 Info</button>
+                    <button class="tab-btn" data-tab="members">👥 Members</button>
+                    <button class="tab-btn" data-tab="tasks">📋 Tasks</button>
+                    <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+                </div>
+
+                <!-- Group Info Tab -->
+                <div class="group-manage-content active" id="info">
+                    <div class="group-info-display">
+                        <div class="group-header">
+                            <div class="group-icon-display" id="currentGroupIcon">📁</div>
+                            <div class="group-details">
+                                <h4 id="currentGroupName">Group Name</h4>
+                                <p id="currentGroupDescription">Group description</p>
+                                <div class="group-stats">
+                                    <span id="groupMemberCount">0 members</span> • 
+                                    <span id="groupTaskCount">0 tasks</span> • 
+                                    <span id="groupCompletionRate">0% complete</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="group-actions">
+                        <button class="btn-secondary" id="editGroupBtn">✏️ Edit Group</button>
+                        <button class="btn-secondary" id="inviteToGroupBtn">👥 Invite Members</button>
+                        <button class="btn-danger" id="deleteGroupBtn">🗑️ Delete Group</button>
+                    </div>
+                </div>
+
+                <!-- Group Members Tab -->
+                <div class="group-manage-content" id="members">
+                    <div class="members-section">
+                        <div class="section-header">
+                            <h4>Group Members</h4>
+                            <button class="btn-primary" id="addMemberBtn">+ Add Member</button>
+                        </div>
+                        <div class="members-list" id="groupMembersList">
+                            <!-- Members will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group Tasks Tab -->
+                <div class="group-manage-content" id="tasks">
+                    <div class="group-tasks-section">
+                        <div class="section-header">
+                            <h4>Group Tasks</h4>
+                            <div class="task-stats">
+                                <span class="stat">Pending: <span id="groupPendingTasks">0</span></span>
+                                <span class="stat">Completed: <span id="groupCompletedTasks">0</span></span>
+                                <span class="stat">Overdue: <span id="groupOverdueTasks">0</span></span>
+                            </div>
+                        </div>
+                        <div class="group-tasks-list" id="groupTasksList">
+                            <!-- Tasks will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group Settings Tab -->
+                <div class="group-manage-content" id="settings">
+                    <form id="groupSettingsForm">
+                        <div class="settings-section">
+                            <h4>Permissions</h4>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="settingsAllowMemberInvite">
+                                    Allow members to invite others
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="settingsRequireApproval">
+                                    Require approval for new tasks
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="settingsAutoAssign">
+                                    Auto-assign tasks to members
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h4>Notifications</h4>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="settingsNotifyUpdates">
+                                    Notify on task updates
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="settingsTaskCompletion">
+                                    Notify on task completion
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn-primary">Save Settings</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Member to Group Modal -->
+    <div class="modal-overlay" id="addMemberModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Add Member to Group</h3>
+                <button class="close-btn" id="closeAddMemberModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addMemberForm">
+                    <div class="form-group">
+                        <label for="memberSelect">Select Member</label>
+                        <select id="memberSelect" required>
+                            <option value="">Choose a member...</option>
+                            <!-- Team members will be populated here -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="makeAdmin">
+                            Make this user a group admin
+                        </label>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="cancelAddMember">Cancel</button>
+                        <button type="submit" class="btn-primary">Add Member</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

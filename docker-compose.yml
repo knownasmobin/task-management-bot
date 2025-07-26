@@ -1,0 +1,225 @@
+version: '3.8'
+
+services:
+  # Main Task Manager Application
+  task-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: telegram-task-manager
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - ADMIN_TELEGRAM_ID=${ADMIN_TELEGRAM_ID}
+      - ADMIN_PHONE_NUMBER=${ADMIN_PHONE_NUMBER}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - APP_NAME=${APP_NAME:-Task Manager}
+      - APP_URL=${APP_URL}
+      - APP_VERSION=${APP_VERSION:-1.0.0}
+      - WEBHOOK_URL=${WEBHOOK_URL}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - ENABLE_PHONE_VERIFICATION=${ENABLE_PHONE_VERIFICATION:-true}
+      - REQUIRE_ADMIN_APPROVAL=${REQUIRE_ADMIN_APPROVAL:-true}
+      - MAX_TEAM_SIZE=${MAX_TEAM_SIZE:-50}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+      - task-manager-data:/app/persistent
+    networks:
+      - task-manager-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.task-manager.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.task-manager.tls=true"
+      - "traefik.http.routers.task-manager.tls.certresolver=letsencrypt"
+      - "traefik.http.services.task-manager.loadbalancer.server.port=3000"
+
+  # Redis for session storage and caching (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: task-manager-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: >
+      sh -c "
+        if [ -n '${REDIS_PASSWORD}' ]; then
+          redis-server --requirepass ${REDIS_PASSWORD}
+        else
+          redis-server
+        fi
+      "
+    volumes:
+      - redis-data:/data
+    networks:
+      - task-manager-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL database (optional, for advanced features)
+  postgres:
+    image: postgres:15-alpine
+    container_name: task-manager-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${DB_NAME:-task_manager}
+      - POSTGRES_USER=${DB_USER:-taskmanager}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - task-manager-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-taskmanager} -d ${DB_NAME:-task_manager}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx reverse proxy (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: task-manager-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - task-manager
+    networks:
+      - task-manager-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoring with Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: task-manager-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - task-manager-network
+    profiles:
+      - monitoring
+
+  # Grafana for visualization (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: task-manager-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - prometheus
+    networks:
+      - task-manager-network
+    profiles:
+      - monitoring
+
+  # Development environment with hot reload
+  task-manager-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: telegram-task-manager-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "9229:9229" # Node.js debugger port
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - ADMIN_TELEGRAM_ID=${ADMIN_TELEGRAM_ID}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:3000/webhook}
+      - LOG_LEVEL=debug
+    volumes:
+      - .:/app
+      - node_modules_dev:/app/node_modules
+      - ./logs:/app/logs
+    networks:
+      - task-manager-network
+    profiles:
+      - development
+
+# Networks
+networks:
+  task-manager-network:
+    driver: bridge
+    name: task-manager-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Volumes
+volumes:
+  task-manager-data:
+    driver: local
+    name: task-manager-data
+  redis-data:
+    driver: local
+    name: task-manager-redis-data
+  postgres-data:
+    driver: local
+    name: task-manager-postgres-data
+  prometheus-data:
+    driver: local
+    name: task-manager-prometheus-data
+  grafana-data:
+    driver: local
+    name: task-manager-grafana-data
+  node_modules_dev:
+    driver: local
+    name: task-manager-node-modules-dev
