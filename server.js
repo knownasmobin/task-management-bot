@@ -20,15 +20,15 @@ app.use(helmet({
     contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-            defaultSrc: ["'self'", 'https://telegram.org', 'https://web.telegram.org'],
-            scriptSrc: ["'self'", "'unsafe-inline'", 'https://telegram.org', 'https://web.telegram.org'],
+            defaultSrc: ["'self'", 'https://telegram.org', 'https://web.telegram.org', 'https://t.me'],
+            scriptSrc: ["'self'", "'unsafe-inline'", 'https://telegram.org', 'https://web.telegram.org', 'https://t.me'],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", 'https://api.telegram.org', 'https://telegram.org', 'https://web.telegram.org', "wss:", "ws:"],
+            connectSrc: ["'self'", 'https://api.telegram.org', 'https://telegram.org', 'https://web.telegram.org', 'https://t.me', "wss:", "ws:"],
             fontSrc: ["'self'", 'https://telegram.org', 'https://web.telegram.org'],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
-            frameSrc: ["'self'", 'https://telegram.org', 'https://web.telegram.org'],
+            frameSrc: ["'self'", 'https://telegram.org', 'https://web.telegram.org', 'https://t.me'],
         },
     },
     crossOriginEmbedderPolicy: false

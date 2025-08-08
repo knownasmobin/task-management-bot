@@ -1618,6 +1618,12 @@ select option {
     border-color: transparent;
 }
 
+/* Groups grid/list behavior */
+.groups-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.groups-grid.list { display: block; }
+.group-card { cursor: pointer; }
+.groups-grid.list .group-card { display: block; margin-bottom: 10px; }
+
 /* Search input */
 .search-input {
     background: #0b1220;

@@ -431,6 +431,11 @@ class TaskManager {
         // Group search
         document.getElementById('groupSearch').addEventListener('input', (e) => this.filterGroups(e.target.value));
 
+        // Group view toggle (Grid/List)
+        document.querySelectorAll('.group-view-toggle .view-btn').forEach(btn => {
+            btn.addEventListener('click', () => this.setGroupView(btn.dataset.view));
+        });
+
         // Menu button
         document.getElementById('menuBtn').addEventListener('click', () => this.toggleMenu());
 
@@ -441,6 +446,19 @@ class TaskManager {
         }
         
     this.listenersInitialized = true;
+    }
+
+    setGroupView(view) {
+        // Toggle active state on buttons
+        document.querySelectorAll('.group-view-toggle .view-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === view);
+        });
+        // Apply view mode on grid container
+        const grid = document.getElementById('groupsGrid');
+        if (grid) {
+            grid.dataset.view = view;
+            grid.classList.toggle('list', view === 'list');
+        }
     }
 
     switchTab(tabName) {
@@ -870,14 +888,16 @@ class TaskManager {
             botUrl ? `Or start the bot: ${botUrl}` : ''
         ].filter(Boolean).join('\n');
 
-        // Prefer Telegram share link (opens chat picker)
-        const shareLink = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
+    // Prefer Telegram deep link first, then t.me share URL
+    const tgDeepLink = `tg://msg?text=${encodeURIComponent(shareText)}`;
+    const shareLink = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
 
-        if (window.Telegram && window.Telegram.WebApp) {
+    if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             try {
-                if (typeof tg.openTelegramLink === 'function') {
-                    tg.openTelegramLink(shareLink);
+        if (typeof tg.openTelegramLink === 'function') {
+            // Try deep link to bypass CSP on t.me if present
+            tg.openTelegramLink(tgDeepLink);
                     return;
                 }
             } catch (err) {
@@ -886,7 +906,8 @@ class TaskManager {
             }
             try {
                 if (typeof tg.openLink === 'function') {
-                    tg.openLink(shareLink);
+            // openLink with https share as fallback
+            tg.openLink(shareLink);
                     return;
                 }
             } catch (err) {
