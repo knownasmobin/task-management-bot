@@ -873,14 +873,20 @@ class TaskManager {
         // Prefer Telegram share link (opens chat picker)
         const shareLink = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
 
-        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
             try {
-                window.Telegram.WebApp.openTelegramLink(shareLink);
-                Utils.showToast('Select a chat to share the invite');
-                return;
-            } catch (e) {
-                // Fallback to copy/share below
-            }
+                if (typeof tg.openTelegramLink === 'function') {
+                    tg.openTelegramLink(shareLink);
+                    return;
+                }
+            } catch (_) {}
+            try {
+                if (typeof tg.openLink === 'function') {
+                    tg.openLink(shareLink);
+                    return;
+                }
+            } catch (_) {}
         }
 
         // Browser fallback: Web Share API or clipboard
