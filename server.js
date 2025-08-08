@@ -273,35 +273,16 @@ async function processBotCommand(message) {
         
         switch (command) {
             case '/start':
-                response = `👋 *Welcome to Task Manager!*\n\nYour personal task management assistant.\n\n🚀 Use the button below to open the app!`;
-                if (process.env.APP_URL) {
-                    keyboard = {
-                        inline_keyboard: [
-                            [{ text: '🚀 Open App', web_app: { url: process.env.APP_URL } }],
-                            [
-                                { text: '📋 My Tasks', callback_data: 'quick_tasks' },
-                                { text: '➕ New Task', callback_data: 'quick_create' }
-                            ],
-                            [{ text: '❓ Help', callback_data: 'help_guide' }]
-                        ]
-                    };
-                }
+                response = `👋 *Welcome to Task Manager!*\n\nYour personal task management assistant.\n\n🚀 Open the app from the attachment menu or direct link!`;
+                // Removed keyboard - no buttons in bot interface
                 break;
             case '/help':
                 response = `❓ *Task Manager Help*\n\n*Available Commands:*\n• /start - Welcome message\n• /tasks - View your tasks\n• /help - This help message\n\n💡 Use the app for full functionality!`;
-                if (process.env.APP_URL) {
-                    keyboard = {
-                        inline_keyboard: [[{ text: '🚀 Open App', web_app: { url: process.env.APP_URL } }]]
-                    };
-                }
+                // Removed keyboard - no buttons in bot interface
                 break;
             case '/tasks':
-                response = `📋 *Your Tasks*\n\nOpen the Task Manager app to view and manage your tasks.\n\n💡 Tap the button below!`;
-                if (process.env.APP_URL) {
-                    keyboard = {
-                        inline_keyboard: [[{ text: '📋 View Tasks', web_app: { url: process.env.APP_URL } }]]
-                    };
-                }
+                response = `📋 *Your Tasks*\n\nOpen the Task Manager app to view and manage your tasks.\n\n💡 Use the attachment menu or direct link!`;
+                // Removed keyboard - no buttons in bot interface
                 break;
             default:
                 response = `❓ Unknown command: ${command}\n\nUse /help to see available commands.`;

@@ -101,13 +101,8 @@ class WebhookHandler {
                            `• /tasks - View your tasks\n` +
                            `• /create - Create a new task`;
 
-            const keyboard = {
-                inline_keyboard: [
-                    [{ text: '📋 Open Task Manager', web_app: { url: process.env.APP_URL } }]
-                ]
-            };
-
-            await this.bot.sendNotification(userId, response, keyboard);
+            // Removed keyboard - no buttons in bot interface
+            await this.bot.sendNotification(userId, response);
         } else if (text.includes('help')) {
             await this.bot.handleHelpCommand(userId);
         } else {
@@ -115,14 +110,8 @@ class WebhookHandler {
             const response = `👋 Hi there!\n\n` +
                            `I'm your Task Manager bot. Use /help to see what I can do, or open the app directly!`;
 
-            const keyboard = {
-                inline_keyboard: [
-                    [{ text: '🚀 Open Task Manager', web_app: { url: process.env.APP_URL } }],
-                    [{ text: '❓ Help', callback_data: 'help_guide' }]
-                ]
-            };
-
-            await this.bot.sendNotification(userId, response, keyboard);
+            // Removed keyboard - no buttons in bot interface
+            await this.bot.sendNotification(userId, response);
         }
     }
 
@@ -271,17 +260,8 @@ class WebhookHandler {
                            `📅 Requested: ${new Date().toLocaleString()}\n\n` +
                            `Please review this request in the admin dashboard.`;
 
-            const keyboard = {
-                inline_keyboard: [
-                    [
-                        { text: '✅ Approve', callback_data: `approve_${userInfo.telegram_id}` },
-                        { text: '❌ Reject', callback_data: `reject_${userInfo.telegram_id}` }
-                    ],
-                    [{ text: '⚙️ Admin Dashboard', web_app: { url: `${process.env.APP_URL}?tab=admin` } }]
-                ]
-            };
-
-            await this.bot.sendNotification(adminId, message, keyboard);
+            // Removed keyboard - no buttons in bot interface
+            await this.bot.sendNotification(adminId, message);
         }
     }
 

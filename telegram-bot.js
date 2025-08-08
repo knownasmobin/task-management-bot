@@ -345,18 +345,8 @@ class TelegramBot {
                        `• Get notifications for updates\n\n` +
                        `💡 _Pro tip: You can use /tasks to quickly view your tasks!_`;
 
-        const keyboard = {
-            inline_keyboard: [
-                [{ text: '🚀 Open Task Manager', web_app: { url: process.env.APP_URL } }],
-                [
-                    { text: '📋 My Tasks', callback_data: 'quick_tasks' },
-                    { text: '➕ New Task', callback_data: 'quick_create' }
-                ],
-                [{ text: '❓ Help', callback_data: 'help_guide' }]
-            ]
-        };
-
-        return await this.sendNotification(userId, message, keyboard);
+        // Removed keyboard - no buttons in bot interface
+        return await this.sendNotification(userId, message);
     }
 
     async handleTasksCommand(userId) {
@@ -366,14 +356,8 @@ class TelegramBot {
                        `Loading your current tasks...\n\n` +
                        `💡 _Tip: Use the button below to see all details_`;
 
-        const keyboard = {
-            inline_keyboard: [
-                [{ text: '📋 View All Tasks', web_app: { url: process.env.APP_URL } }],
-                [{ text: '➕ Add New Task', web_app: { url: `${process.env.APP_URL}?new=true` } }]
-            ]
-        };
-
-        return await this.sendNotification(userId, message, keyboard);
+        // Removed keyboard - no buttons in bot interface
+        return await this.sendNotification(userId, message);
     }
 
     async handleCreateCommand(userId, args) {
@@ -384,13 +368,8 @@ class TelegramBot {
                            `Usage: \`/create Your task title here\`\n\n` +
                            `Or use the button below for advanced options.`;
 
-            const keyboard = {
-                inline_keyboard: [
-                    [{ text: '➕ Create Task', web_app: { url: `${process.env.APP_URL}?new=true` } }]
-                ]
-            };
-
-            return await this.sendNotification(userId, message, keyboard);
+            // Removed keyboard - no buttons in bot interface
+            return await this.sendNotification(userId, message);
         }
 
         // Quick task creation logic would go here
@@ -398,14 +377,8 @@ class TelegramBot {
                        `📋 *${taskTitle}*\n\n` +
                        `Your task has been created! You can view and edit it using the button below.`;
 
-        const keyboard = {
-            inline_keyboard: [
-                [{ text: '👀 View Task', web_app: { url: process.env.APP_URL } }],
-                [{ text: '📋 All Tasks', web_app: { url: process.env.APP_URL } }]
-            ]
-        };
-
-        return await this.sendNotification(userId, message, keyboard);
+        // Removed keyboard - no buttons in bot interface
+        return await this.sendNotification(userId, message);
     }
 
     async handleNotificationsCommand(userId) {
@@ -418,14 +391,8 @@ class TelegramBot {
                        `• 📊 Daily summaries\n\n` +
                        `💡 _Use the button below to customize your settings_`;
 
-        const keyboard = {
-            inline_keyboard: [
-                [{ text: '⚙️ Notification Settings', web_app: { url: `${process.env.APP_URL}?tab=notifications` } }],
-                [{ text: '🔕 Disable All', callback_data: 'disable_notifications' }]
-            ]
-        };
-
-        return await this.sendNotification(userId, message, keyboard);
+        // Removed keyboard - no buttons in bot interface
+        return await this.sendNotification(userId, message);
     }
 
     async handleHelpCommand(userId) {
@@ -443,13 +410,8 @@ class TelegramBot {
                        `• 📊 Progress tracking\n\n` +
                        `💡 _Tap the button below to open the full app_`;
 
-        const keyboard = {
-            inline_keyboard: [
-                [{ text: '🚀 Open App', web_app: { url: process.env.APP_URL } }]
-            ]
-        };
-
-        return await this.sendNotification(userId, message, keyboard);
+        // Removed keyboard - no buttons in bot interface
+        return await this.sendNotification(userId, message);
     }
 
     async handleUnknownCommand(userId, command) {
@@ -457,14 +419,8 @@ class TelegramBot {
                        `Sorry, I don't recognize the command \`${command}\`.\n\n` +
                        `Use /help to see available commands.`;
 
-        const keyboard = {
-            inline_keyboard: [
-                [{ text: '❓ Help', callback_data: 'help_guide' }],
-                [{ text: '🚀 Open App', web_app: { url: process.env.APP_URL } }]
-            ]
-        };
-
-        return await this.sendNotification(userId, message, keyboard);
+        // Removed keyboard - no buttons in bot interface
+        return await this.sendNotification(userId, message);
     }
 
     // Utility methods
@@ -576,13 +532,8 @@ class TelegramBot {
                        `Great job! The task has been marked as completed.\n\n` +
                        `🎉 _Keep up the excellent work!_`;
 
-        const keyboard = {
-            inline_keyboard: [
-                [{ text: '📋 View All Tasks', web_app: { url: process.env.APP_URL } }]
-            ]
-        };
-
-        return await this.sendNotification(userId, message, keyboard);
+        // Removed keyboard - no buttons in bot interface
+        return await this.sendNotification(userId, message);
     }
 
     // Get delivery statistics

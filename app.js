@@ -942,26 +942,19 @@ class TaskManager {
     }
 
     inviteTeamMember() {
-        // Build share content
-        const cfg = new Config();
-        const appUrl = cfg.get('APP_URL') || window.location.origin;
-        const botUser = cfg.get('TELEGRAM_BOT_USERNAME')?.replace(/^@/, '') || '';
-        const botUrl = botUser ? `https://t.me/${botUser}` : '';
+        // Build share content - simple app URL sharing
+        const appUrl = window.location.origin;
 
         const inviter = this.currentUser ? `${this.currentUser.first_name}${this.currentUser.last_name ? ' ' + this.currentUser.last_name : ''}` : 'A teammate';
         const shareText = [
             `👋 ${inviter} invited you to join our Task Manager mini app!`,
             '',
             `Open the app to view tasks and collaborate:`,
-            appUrl,
-            botUrl ? '' : '',
-            botUrl ? `Or start the bot: ${botUrl}` : ''
-        ].filter(Boolean).join('\n');
+            appUrl
+        ].join('\n');
 
-    // Prefer sharing the bot deep link so Telegram routes best (falls back to app URL)
-    const botStartAppLink = botUser ? `https://t.me/${botUser}?startapp=join` : '';
-    const shareTarget = botStartAppLink || appUrl;
-    const shareLink = `https://t.me/share/url?url=${encodeURIComponent(shareTarget)}&text=${encodeURIComponent(shareText)}`;
+        // Create Telegram share link with app URL
+        const shareLink = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
 
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
