@@ -701,19 +701,20 @@ class TaskService {
                     task.hasDeadline() && task.isOverdue() && !task.isCompleted()
                 );
                 break;
-            case 'due_today':
+            case 'due_today': {
                 const today = new Date().toDateString();
                 filteredTasks = this.tasks.filter(task => {
                     if (!task.hasDeadline() || task.isCompleted()) return false;
                     return new Date(task.getDeadline()).toDateString() === today;
                 });
                 break;
+            }
             case 'due_soon':
                 filteredTasks = this.tasks.filter(task => 
                     task.hasDeadline() && task.isDueSoon(72) && !task.isCompleted()
                 );
                 break;
-            case 'upcoming':
+            case 'upcoming': {
                 const nextWeek = new Date();
                 nextWeek.setDate(nextWeek.getDate() + 7);
                 filteredTasks = this.tasks.filter(task => {
@@ -722,6 +723,7 @@ class TaskService {
                     return deadline <= nextWeek && deadline >= new Date();
                 });
                 break;
+            }
             case 'no_deadline':
                 filteredTasks = this.tasks.filter(task => !task.hasDeadline());
                 break;

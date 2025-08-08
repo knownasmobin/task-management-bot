@@ -88,14 +88,14 @@ FROM base AS production
 USER taskmanager
 
 # Labels for better container management
-LABEL maintainer="your-email@example.com"
+LABEL maintainer="maintainers@task-management-bot"
 LABEL version="1.0.0"
 LABEL description="Telegram Task Manager Mini App with Push Notifications"
 LABEL org.opencontainers.image.title="Telegram Task Manager"
 LABEL org.opencontainers.image.description="A beautiful Telegram mini app for team task management"
 LABEL org.opencontainers.image.version="1.0.0"
 LABEL org.opencontainers.image.vendor="Task Manager Team"
-LABEL org.opencontainers.image.source="https://github.com/yourusername/telegram-task-manager"
+LABEL org.opencontainers.image.source="https://github.com/knownasmobin/task-management-bot"
 
 # Set environment variables
 ENV NODE_ENV=production

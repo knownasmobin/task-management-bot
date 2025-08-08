@@ -640,6 +640,10 @@ class TelegramBot {
 
 // Export for Node.js environments
 if (typeof module !== 'undefined' && module.exports) {
+    // Polyfill fetch for Node < 18
+    if (typeof fetch === 'undefined') {
+        global.fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+    }
     module.exports = TelegramBot;
 }
 

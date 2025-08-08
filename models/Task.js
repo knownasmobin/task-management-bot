@@ -441,7 +441,7 @@ class Task {
     }
 
     isSameAs(other) {
-        if (!other instanceof Task) return false;
+    if (!(other instanceof Task)) return false;
         
         return this.title === other.title &&
                this.description === other.description &&

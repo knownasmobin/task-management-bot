@@ -1,0 +1,25 @@
+{
+  "env": {
+    "es2021": true,
+    "browser": true,
+    "jest": true
+  },
+  "extends": ["eslint:recommended"],
+  "parserOptions": { "ecmaVersion": 2021, "sourceType": "script" },
+  "overrides": [
+    {
+      "files": ["server.js"],
+      "env": { "node": true, "browser": false }
+    }
+  ],
+  "rules": {
+  "no-undef": "off",
+    "no-unused-vars": ["warn", { "args": "none", "ignoreRestSiblings": true }],
+    "no-console": "off",
+    "no-unsafe-negation": "warn",
+    "no-case-declarations": "warn",
+    "no-useless-escape": "warn",
+    "no-prototype-builtins": "warn"
+  },
+  "ignorePatterns": ["node_modules/", "archive/", "**/*.min.js"]
+}

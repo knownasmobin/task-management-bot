@@ -6,6 +6,10 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+// Polyfill fetch for Node < 18 (node-fetch v3 is ESM-only)
+if (typeof fetch === 'undefined') {
+    global.fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
