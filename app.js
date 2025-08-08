@@ -13,6 +13,7 @@ class TaskManager {
         this.editingGroup = null;
         this.currentUser = null;
         this.isAdmin = false;
+    this._tgMainHandlerRef = null;
         
         // Team management
         this.teamMembers = Utils.getFromStorage(APP_CONSTANTS.STORAGE_KEYS.TEAM_MEMBERS, []);
@@ -372,10 +373,18 @@ class TaskManager {
                 this.saveData();
             }
             
-            // Handle main button
-            tg.MainButton.offClick && tg.MainButton.offClick();
+            // Handle main button with a single persistent handler
+            if (!this._tgMainHandlerRef) {
+                this._tgMainHandlerRef = () => {
+                    if (this.currentTab === 'team') {
+                        this.inviteTeamMember();
+                    } else if (this.currentTab === 'tasks') {
+                        this.showTaskModal();
+                    }
+                };
+                tg.MainButton.onClick(this._tgMainHandlerRef);
+            }
             tg.MainButton.setText('Add Task');
-            tg.MainButton.onClick(() => this.showTaskModal());
             tg.MainButton.show();
         }
     }
@@ -488,16 +497,12 @@ class TaskManager {
             switch (tabName) {
                 case 'tasks':
                     tg.MainButton.hideProgress();
-                    tg.MainButton.offClick && tg.MainButton.offClick();
                     tg.MainButton.setText('Add Task');
-                    tg.MainButton.onClick(() => this.showTaskModal());
                     tg.MainButton.show();
                     break;
                 case 'team':
                     tg.MainButton.hideProgress();
-                    tg.MainButton.offClick && tg.MainButton.offClick();
                     tg.MainButton.setText('Invite Member');
-                    tg.MainButton.onClick(() => this.inviteTeamMember());
                     tg.MainButton.show();
                     break;
                 case 'stats':
@@ -894,27 +899,31 @@ class TaskManager {
 
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
-            try {
-                if (typeof tg.openTelegramLink === 'function') {
-                    tg.openTelegramLink(shareLink);
-                    // Best-effort fallback in case some clients ignore the first call
-                    setTimeout(() => {
-                        if (typeof tg.openLink === 'function') tg.openLink(shareLink);
-                    }, 150);
-                    return;
-                }
-            } catch (err) {
-                // Continue to next fallback
-                console.debug('openTelegramLink failed, falling back', err);
-            }
+            let attempted = false;
             try {
                 if (typeof tg.openLink === 'function') {
-            tg.openLink(shareLink);
-                    return;
+                    tg.openLink(shareLink);
+                    attempted = true;
                 }
             } catch (err) {
-                // Will fall back to Web Share/clipboard/open
-                console.debug('openLink failed, falling back', err);
+                console.debug('openLink failed, will try openTelegramLink', err);
+            }
+            if (!attempted) {
+                try {
+                    if (typeof tg.openTelegramLink === 'function') {
+                        tg.openTelegramLink(shareLink);
+                        attempted = true;
+                    }
+                } catch (err2) {
+                    console.debug('openTelegramLink failed, trying browser fallbacks', err2);
+                }
+            }
+            // If we tried via Telegram APIs, also schedule a direct navigation as a last resort
+            if (attempted) {
+                setTimeout(() => {
+                    try { window.location.assign(shareLink); } catch (err3) { console.debug('Direct assign failed', err3); }
+                }, 180);
+                return;
             }
         }
 
