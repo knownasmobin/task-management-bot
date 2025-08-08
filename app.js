@@ -889,16 +889,18 @@ class TaskManager {
             botUrl ? `Or start the bot: ${botUrl}` : ''
         ].filter(Boolean).join('\n');
 
-    // Prefer Telegram deep link first, then t.me share URL
-    const tgDeepLink = `tg://msg?text=${encodeURIComponent(shareText)}`;
+    // Use t.me share URL (works reliably in Telegram WebApp)
     const shareLink = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
 
-    if (window.Telegram && window.Telegram.WebApp) {
+        if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             try {
-        if (typeof tg.openTelegramLink === 'function') {
-            // Try deep link to bypass CSP on t.me if present
-            tg.openTelegramLink(tgDeepLink);
+                if (typeof tg.openTelegramLink === 'function') {
+                    tg.openTelegramLink(shareLink);
+                    // Best-effort fallback in case some clients ignore the first call
+                    setTimeout(() => {
+                        if (typeof tg.openLink === 'function') tg.openLink(shareLink);
+                    }, 150);
                     return;
                 }
             } catch (err) {
@@ -907,7 +909,6 @@ class TaskManager {
             }
             try {
                 if (typeof tg.openLink === 'function') {
-            // openLink with https share as fallback
             tg.openLink(shareLink);
                     return;
                 }
