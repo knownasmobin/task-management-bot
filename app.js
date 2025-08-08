@@ -15,6 +15,14 @@ class TaskManager {
         this.isAdmin = false;
     this._tgMainHandlerRef = null;
         
+        // Initialize tasks and groups getters for easier access
+        Object.defineProperty(this, 'tasks', {
+            get() { return this.taskService.tasks; }
+        });
+        Object.defineProperty(this, 'groups', {
+            get() { return this.groupService.groups; }
+        });
+        
         // Team management
         this.teamMembers = Utils.getFromStorage(APP_CONSTANTS.STORAGE_KEYS.TEAM_MEMBERS, []);
         
@@ -469,6 +477,23 @@ class TaskManager {
         }
     }
 
+    // Save data to services
+    saveData() {
+        if (this.taskService) {
+            this.taskService.saveTasks();
+        }
+        if (this.groupService && this.groupService.saveGroups) {
+            this.groupService.saveGroups();
+        }
+        // Save team members
+        Utils.setToStorage(APP_CONSTANTS.STORAGE_KEYS.TEAM_MEMBERS, this.teamMembers);
+    }
+
+    // Show toast notification
+    showToast(message, type = 'info', duration = 3000) {
+        Utils.showToast(message, type, duration);
+    }
+
     switchTab(tabName) {
         // Check if user has access to admin tab
         if (tabName === 'admin' && !this.isAdmin) {
@@ -745,7 +770,7 @@ class TaskManager {
                             <span>👤</span>
                             ${assignee ? assignee.name : 'Unknown'}
                         </div>
-                        <div class="task-status ${task.status}">${this.formatStatus(task.status)}</div>
+                        <div class="task-status ${task.status}">${Utils.formatStatus(task.status)}</div>
                     </div>
                     ${deadlineInfo}
                     ${reminderInfo}
@@ -1017,7 +1042,7 @@ class TaskManager {
     
     openTaskFromNotification(taskId) {
         // Switch to tasks tab
-        this.switchToTab('tasks');
+        this.switchTab('tasks');
         
         // Find and highlight the task
         const taskElement = document.querySelector(`[data-task-id="${taskId}"]`);
@@ -1329,42 +1354,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Add some sample data for demonstration
-if (!localStorage.getItem('tasks')) {
-    const sampleTasks = [
-        {
-            id: 1,
-            title: 'Design new user interface',
-            description: 'Create mockups for the new dashboard layout',
-            assignee: 'me',
-            priority: 'high',
-            status: 'in-progress',
-            dueDate: '2025-01-30',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        },
-        {
-            id: 2,
-            title: 'Review team feedback',
-            description: 'Go through all the feedback from the last sprint',
-            assignee: 'me',
-            priority: 'medium',
-            status: 'pending',
-            dueDate: '2025-01-25',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        },
-        {
-            id: 3,
-            title: 'Update documentation',
-            description: 'Update the API documentation with latest changes',
-            assignee: 'me',
-            priority: 'low',
-            status: 'completed',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        }
-    ];
-    
-    localStorage.setItem('tasks', JSON.stringify(sampleTasks));
-}
