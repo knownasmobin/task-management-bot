@@ -385,11 +385,16 @@ class TaskManager {
             
             // Handle main button with a single persistent handler
             if (!this._tgMainHandlerRef) {
-                this._tgMainHandlerRef = () => {
+                this._tgMainHandlerRef = (callback) => {
+                    console.log('MainButton pressed, current tab:', this.currentTab);
                     if (this.currentTab === 'team') {
                         this.inviteTeamMember();
                     } else if (this.currentTab === 'tasks') {
                         this.showTaskModal();
+                    }
+                    // Call the callback if provided to signal completion
+                    if (typeof callback === 'function') {
+                        callback();
                     }
                 };
                 tg.MainButton.onClick(this._tgMainHandlerRef);

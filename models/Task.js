@@ -370,7 +370,7 @@ class Task {
     }
 
     getStatusDisplay() {
-        return this.formatStatus(this.status);
+        return Utils.formatStatus(this.status);
     }
 
     getPriorityEmoji() {
