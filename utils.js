@@ -145,7 +145,15 @@ class Utils {
     // Filter utilities
     static filterTasksByStatus(tasks, status) {
         if (status === 'all') return tasks;
-        return tasks.filter(task => task.status === status);
+        console.log('Utils.filterTasksByStatus called with:', tasks.length, 'tasks, status:', status);
+        
+        const result = tasks.filter(task => {
+            console.log('Filtering task:', task.id, 'status:', task.status, 'constructor:', task.constructor.name);
+            return task.status === status;
+        });
+        
+        console.log('Filtered result:', result.length, 'tasks');
+        return result;
     }
 
     static filterTasksByAssignee(tasks, assigneeId) {
