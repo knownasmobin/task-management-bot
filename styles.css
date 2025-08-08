@@ -1554,6 +1554,51 @@ body {
 /* Status indicators */
 .status-item { background: rgba(148,163,184,0.08); border: 1px solid rgba(148,163,184,0.12); }
 
+/* Modern Selects & Dropdowns */
+.form-group select,
+.group-select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: #0b1220;
+    color: var(--text);
+    border: 1px solid rgba(148,163,184,0.25);
+    border-radius: 10px;
+    padding: 12px 40px 12px 12px;
+    height: 44px;
+    line-height: 20px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5.5 7.5L10 12l4.5-4.5' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 18px 18px;
+    cursor: pointer;
+}
+.form-group select:hover,
+.group-select:hover {
+    border-color: rgba(148,163,184,0.45);
+}
+.form-group select:focus,
+.group-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(34,197,94,0.2);
+}
+.form-group select:disabled,
+.group-select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+/* Improve option contrast in dark theme (best-effort; browser-dependent) */
+select option {
+    background-color: #0b1220;
+    color: var(--text);
+}
+/* Compact variant for top filters */
+.group-filter label { color: var(--muted); font-size: 0.85rem; margin-right: 6px; }
+.group-select { min-width: 160px; }
+
 .task-due.critical {
     background: #fff5f5;
     color: #e53e3e;

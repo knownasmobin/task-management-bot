@@ -433,6 +433,12 @@ class TaskManager {
 
         // Menu button
         document.getElementById('menuBtn').addEventListener('click', () => this.toggleMenu());
+
+        // Invite button (Team tab)
+        const inviteBtn = document.getElementById('inviteBtn');
+        if (inviteBtn) {
+            inviteBtn.addEventListener('click', () => this.inviteTeamMember());
+        }
         
     this.listenersInitialized = true;
     }
@@ -848,48 +854,45 @@ class TaskManager {
     }
 
     inviteTeamMember() {
-        // Simulate inviting via Telegram
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            tg.showPopup({
-                title: 'Invite Team Member',
-                message: 'Share this bot with your team members to invite them!',
-                buttons: [
-                    { text: 'Share', type: 'default', id: 'share' },
-                    { text: 'Cancel', type: 'cancel' }
-                ]
-            }, (buttonId) => {
-                if (buttonId === 'share') {
-                    // Mock adding a team member
-                    const mockMember = {
-                        id: Date.now(),
-                        name: 'New Member',
-                        role: 'Team Member',
-                        avatar: 'N'
-                    };
-                    this.teamMembers.push(mockMember);
-                    Utils.setToStorage(APP_CONSTANTS.STORAGE_KEYS.TEAM_MEMBERS, this.teamMembers);
-                    this.renderTeam();
-                    this.updateStats();
-                    Utils.showToast('Team member invited!', 'success');
-                }
-            });
-        } else {
-            // Fallback for non-Telegram environment
-            const name = prompt('Enter team member name:');
-            if (name) {
-                const newMember = {
-                    id: Date.now(),
-                    name: name,
-                    role: 'Team Member',
-                    avatar: name[0].toUpperCase()
-                };
-                this.teamMembers.push(newMember);
-                Utils.setToStorage(APP_CONSTANTS.STORAGE_KEYS.TEAM_MEMBERS, this.teamMembers);
-                this.renderTeam();
-                this.updateStats();
-                Utils.showToast('Team member added!', 'success');
+        // Build share content
+        const cfg = new Config();
+        const appUrl = cfg.get('APP_URL') || window.location.origin;
+        const botUser = cfg.get('TELEGRAM_BOT_USERNAME')?.replace(/^@/, '') || '';
+        const botUrl = botUser ? `https://t.me/${botUser}` : '';
+
+        const inviter = this.currentUser ? `${this.currentUser.first_name}${this.currentUser.last_name ? ' ' + this.currentUser.last_name : ''}` : 'A teammate';
+        const shareText = [
+            `👋 ${inviter} invited you to join our Task Manager mini app!`,
+            '',
+            `Open the app to view tasks and collaborate:`,
+            appUrl,
+            botUrl ? '' : '',
+            botUrl ? `Or start the bot: ${botUrl}` : ''
+        ].filter(Boolean).join('\n');
+
+        // Prefer Telegram share link (opens chat picker)
+        const shareLink = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
+
+        if (window.Telegram && window.Telegram.WebApp && typeof window.Telegram.WebApp.openTelegramLink === 'function') {
+            try {
+                window.Telegram.WebApp.openTelegramLink(shareLink);
+                Utils.showToast('Select a chat to share the invite');
+                return;
+            } catch (e) {
+                // Fallback to copy/share below
             }
+        }
+
+        // Browser fallback: Web Share API or clipboard
+        if (navigator.share) {
+            navigator.share({ title: 'Join our Task Manager', text: shareText, url: appUrl })
+                .catch(() => {/* ignore */});
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(`${shareText}\n${appUrl}`)
+                .then(() => Utils.showToast('Invite copied to clipboard'))
+                .catch(() => window.open(shareLink, '_blank'));
+        } else {
+            window.open(shareLink, '_blank');
         }
     }
 
