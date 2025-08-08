@@ -19,6 +19,9 @@ class TaskManager {
         
         // Don't initialize until user is authenticated
         this.initialized = false;
+    // Ensure UI listeners bind even before auth completes
+    this.listenersInitialized = false;
+    this.initEventListeners();
     }
 
     onUserAuthenticated(userInfo) {
@@ -377,6 +380,7 @@ class TaskManager {
     }
 
     initEventListeners() {
+        if (this.listenersInitialized) return;
         // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
@@ -429,6 +433,8 @@ class TaskManager {
 
         // Menu button
         document.getElementById('menuBtn').addEventListener('click', () => this.toggleMenu());
+        
+    this.listenersInitialized = true;
     }
 
     switchTab(tabName) {
@@ -1258,8 +1264,12 @@ class TaskManager {
 
 // Initialize the app
 let taskManager;
+// Initialize as early as possible so UI handlers exist before auth flow
 document.addEventListener('DOMContentLoaded', () => {
-    taskManager = new TaskManager();
+    if (!window.taskManager) {
+        taskManager = new TaskManager();
+        window.taskManager = taskManager;
+    }
 });
 
 // Add some sample data for demonstration

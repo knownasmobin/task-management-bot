@@ -270,22 +270,45 @@ async function processBotCommand(message) {
     
     try {
         let response = '';
+        let keyboard = null;
         
         switch (command) {
             case '/start':
                 response = `👋 *Welcome to Task Manager!*\n\nYour personal task management assistant.\n\n🚀 Use the button below to open the app!`;
+                if (process.env.APP_URL) {
+                    keyboard = {
+                        inline_keyboard: [
+                            [{ text: '🚀 Open App', web_app: { url: process.env.APP_URL } }],
+                            [
+                                { text: '📋 My Tasks', callback_data: 'quick_tasks' },
+                                { text: '➕ New Task', callback_data: 'quick_create' }
+                            ],
+                            [{ text: '❓ Help', callback_data: 'help_guide' }]
+                        ]
+                    };
+                }
                 break;
             case '/help':
                 response = `❓ *Task Manager Help*\n\n*Available Commands:*\n• /start - Welcome message\n• /tasks - View your tasks\n• /help - This help message\n\n💡 Use the app for full functionality!`;
+                if (process.env.APP_URL) {
+                    keyboard = {
+                        inline_keyboard: [[{ text: '🚀 Open App', web_app: { url: process.env.APP_URL } }]]
+                    };
+                }
                 break;
             case '/tasks':
                 response = `📋 *Your Tasks*\n\nOpen the Task Manager app to view and manage your tasks.\n\n💡 Tap the button below!`;
+                if (process.env.APP_URL) {
+                    keyboard = {
+                        inline_keyboard: [[{ text: '📋 View Tasks', web_app: { url: process.env.APP_URL } }]]
+                    };
+                }
                 break;
             default:
                 response = `❓ Unknown command: ${command}\n\nUse /help to see available commands.`;
         }
         
-        await sendTelegramMessage(userId, response);
+        await sendTelegramMessage(userId, response, keyboard ? { reply_markup: keyboard } : {});
     } catch (error) {
         console.error('Error processing bot command:', error);
     }
@@ -416,6 +439,32 @@ async function getBotInfo() {
     }
 }
 
+async function setBotCommands() {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) return;
+    try {
+        const url = `https://api.telegram.org/bot${botToken}/setMyCommands`;
+        const commands = [
+            { command: 'start', description: 'Open Task Manager' },
+            { command: 'tasks', description: 'View your tasks' },
+            { command: 'help', description: 'Get help' }
+        ];
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ commands })
+        });
+        const result = await response.json();
+        if (!result.ok) {
+            console.warn('Failed to set bot commands:', result.description);
+        } else {
+            console.log('Telegram bot commands set');
+        }
+    } catch (e) {
+        console.warn('Error setting bot commands:', e.message);
+    }
+}
+
 // Graceful shutdown
 process.on('SIGTERM', () => {
     console.log('SIGTERM received, shutting down gracefully');
@@ -444,6 +493,8 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     if (process.env.NODE_ENV === 'production') {
         console.log(`📡 Production webhook: ${process.env.APP_URL}/webhook`);
     }
+    // Try to set bot commands on startup
+    setBotCommands();
 });
 
 module.exports = app;

@@ -1032,6 +1032,9 @@ class AuthManager {
 // Initialize auth when DOM is loaded
 let auth;
 document.addEventListener('DOMContentLoaded', () => {
-    const config = new Config();
-    auth = new AuthManager(config);
+    if (!window.auth) {
+        const config = new Config();
+        auth = new AuthManager(config);
+        window.auth = auth;
+    }
 });
