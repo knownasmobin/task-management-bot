@@ -649,3 +649,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // Global instance for browser
 let telegramBot;
+if (typeof window !== 'undefined') {
+    window.TelegramBot = TelegramBot;
+    window.telegramBot = telegramBot;
+}

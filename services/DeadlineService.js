@@ -93,7 +93,7 @@ class DeadlineService {
     }
 
     processPendingReminders(reminders) {
-        for (const { task, reminderInfo, reminderKey } of reminders) {
+    for (const { task, reminderInfo } of reminders) {
             try {
                 // Mark reminder as sent in task
                 task.markReminderSent(reminderInfo.reminderKey);
@@ -118,7 +118,7 @@ class DeadlineService {
     }
 
     sendReminderNotification(task, reminderInfo) {
-        const { interval, reminderTime } = reminderInfo;
+    const { interval } = reminderInfo;
         const timeUntilDeadline = task.getFormattedTimeUntilDeadline();
         
         const notification = {

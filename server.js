@@ -1,6 +1,5 @@
 const express = require('express');
 const path = require('path');
-const crypto = require('crypto');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
@@ -164,7 +163,7 @@ app.get('/api/webhook/stats', (req, res) => {
 // Send notification endpoint (for testing)
 app.post('/api/notify', async (req, res) => {
     try {
-        const { user_id, message, type } = req.body;
+    const { user_id, message } = req.body;
         
         if (!user_id || !message) {
             return res.status(400).json({ error: 'Missing user_id or message' });
@@ -327,6 +326,7 @@ async function processCallbackQuery(callbackQuery) {
         // Process the callback data
         if (data.startsWith('complete_')) {
             const taskId = data.replace('complete_', '');
+            console.log('Completing task from callback:', taskId);
             await sendTelegramMessage(userId, `✅ Task completed! Great job! 🎉`);
         } else if (data === 'help_guide') {
             await sendTelegramMessage(userId, `❓ *Help Guide*\n\nUse the Task Manager app for full functionality!\n\n🚀 Open the app to get started.`);

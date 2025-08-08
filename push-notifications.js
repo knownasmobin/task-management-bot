@@ -635,5 +635,14 @@ class PushNotificationService {
     }
 }
 
+// Export for Node.js environments
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = PushNotificationService;
+}
+
 // Global instance
 let pushNotificationService;
+if (typeof window !== 'undefined') {
+    window.PushNotificationService = PushNotificationService;
+    window.pushNotificationService = pushNotificationService;
+}

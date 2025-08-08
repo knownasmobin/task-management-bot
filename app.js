@@ -880,13 +880,19 @@ class TaskManager {
                     tg.openTelegramLink(shareLink);
                     return;
                 }
-            } catch (_) {}
+            } catch (err) {
+                // Continue to next fallback
+                console.debug('openTelegramLink failed, falling back', err);
+            }
             try {
                 if (typeof tg.openLink === 'function') {
                     tg.openLink(shareLink);
                     return;
                 }
-            } catch (_) {}
+            } catch (err) {
+                // Will fall back to Web Share/clipboard/open
+                console.debug('openLink failed, falling back', err);
+            }
         }
 
         // Browser fallback: Web Share API or clipboard

@@ -147,6 +147,7 @@ class WebhookHandler {
     async handleCallbackQuery(callbackQuery) {
         const userId = callbackQuery.from.id;
         const data = callbackQuery.data;
+        console.debug('Callback from user', userId, 'with data', data);
 
         // Answer the callback query immediately
         await this.bot.makeRequest('answerCallbackQuery', {
@@ -162,7 +163,7 @@ class WebhookHandler {
         const data = JSON.parse(webAppData.data);
 
         // Process data sent from the web app
-        console.log('Web app data received:', data);
+    console.log('Web app data received from', userId, ':', data);
 
         // This could include:
         // - Task updates
@@ -374,3 +375,7 @@ if (typeof module !== 'undefined' && module.exports) {
 
 // Global instance
 let webhookHandler;
+if (typeof window !== 'undefined') {
+    window.WebhookHandler = WebhookHandler;
+    window.webhookHandler = webhookHandler;
+}

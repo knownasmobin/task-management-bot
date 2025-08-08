@@ -30,7 +30,7 @@ describe('DeadlineService more coverage', () => {
 
   test('setCheckInterval enforces minimum and restart behavior', () => {
     svc = new DeadlineService({ getAllTasks: () => ({ success: true, data: [] }) });
-    const prevInterval = svc.checkInterval;
+  // const prevInterval = svc.checkInterval; // not used
     svc.setCheckInterval(1000); // too short -> adjusted
     expect(svc.checkInterval).toBeGreaterThanOrEqual(10000);
     svc.stopReminderSystem();

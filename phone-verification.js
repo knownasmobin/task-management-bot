@@ -352,6 +352,8 @@ let phoneVerification;
 document.addEventListener('DOMContentLoaded', () => {
     if (window.Config) {
         const config = new Config();
-        phoneVerification = new PhoneVerification(config);
+    phoneVerification = new PhoneVerification(config);
+    // expose for debugging to avoid unused var warning in some bundlers
+    window.phoneVerification = phoneVerification;
     }
 });

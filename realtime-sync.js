@@ -615,5 +615,14 @@ class RealTimeSync {
     }
 }
 
+// Export for Node.js environments
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = RealTimeSync;
+}
+
 // Global instance
 let realTimeSync;
+if (typeof window !== 'undefined') {
+    window.RealTimeSync = RealTimeSync;
+    window.realTimeSync = realTimeSync;
+}

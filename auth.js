@@ -31,7 +31,6 @@ class AuthManager {
         try {
             const user = initData.user;
             const authDate = initData.auth_date;
-            const hash = initData.hash;
             
             // Verify the authentication data (in production, this should be done server-side)
             if (this.verifyTelegramAuth(initData)) {
