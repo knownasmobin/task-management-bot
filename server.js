@@ -485,6 +485,7 @@ process.on('SIGINT', () => {
 // Start server
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Task Manager Server running on port ${PORT}`);
+    console.log('🔍 DEBUG: Server started with LOCAL CHANGES - Version 2024-01-08');
     console.log(`📱 Mini App URL: http://localhost:${PORT}`);
     console.log(`🔗 Webhook URL: http://localhost:${PORT}/webhook`);
     console.log(`🏥 Health Check: http://localhost:${PORT}/api/health`);

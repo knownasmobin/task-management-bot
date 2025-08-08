@@ -103,6 +103,7 @@ class TaskManager {
         this.saveData();
         
         console.log('Group management system initialized');
+        console.log('🚀 DEBUG: LOCAL CHANGES APPLIED - Version 2024-01-08');
     }
 
     /**
