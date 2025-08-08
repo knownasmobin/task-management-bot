@@ -29,13 +29,8 @@ class TelegramBot {
     }
 
     async setBotCommands() {
-        const commands = [
-            { command: 'start', description: 'Open Task Manager' },
-            { command: 'tasks', description: 'View your tasks' },
-            { command: 'create', description: 'Create a new task' },
-            { command: 'notifications', description: 'Notification settings' },
-            { command: 'help', description: 'Get help' }
-        ];
+        // Remove all bot commands - only app opening remains
+        const commands = [];
 
         try {
             await this.makeRequest('setMyCommands', { commands });
@@ -184,50 +179,23 @@ class TelegramBot {
 
     // Keyboard creation methods
     getTaskActionKeyboard(taskId) {
-        return {
-            inline_keyboard: [
-                [
-                    { text: '👀 View Task', web_app: { url: `${process.env.APP_URL}?task=${taskId}` } },
-                    { text: '✅ Mark Done', callback_data: `complete_${taskId}` }
-                ],
-                [
-                    { text: '📝 Edit Task', web_app: { url: `${process.env.APP_URL}?edit=${taskId}` } },
-                    { text: '📋 All Tasks', web_app: { url: process.env.APP_URL } }
-                ]
-            ]
-        };
+        // Return empty keyboard - no buttons in bot interface
+        return null;
     }
 
     getTaskViewKeyboard(taskId) {
-        return {
-            inline_keyboard: [
-                [
-                    { text: '👀 View Details', web_app: { url: `${process.env.APP_URL}?task=${taskId}` } },
-                    { text: '📋 All Tasks', web_app: { url: process.env.APP_URL } }
-                ]
-            ]
-        };
+        // Return empty keyboard - no buttons in bot interface
+        return null;
     }
 
     getWelcomeKeyboard() {
-        return {
-            inline_keyboard: [
-                [{ text: '🚀 Open Task Manager', web_app: { url: process.env.APP_URL } }],
-                [{ text: '📚 Quick Start Guide', callback_data: 'help_guide' }]
-            ]
-        };
+        // Return empty keyboard - no buttons in bot interface
+        return null;
     }
 
     getSummaryKeyboard() {
-        return {
-            inline_keyboard: [
-                [
-                    { text: '📋 View Tasks', web_app: { url: process.env.APP_URL } },
-                    { text: '➕ Add Task', web_app: { url: `${process.env.APP_URL}?new=true` } }
-                ],
-                [{ text: '⚙️ Notification Settings', callback_data: 'notification_settings' }]
-            ]
-        };
+        // Return empty keyboard - no buttons in bot interface
+        return null;
     }
 
     // Core message sending method

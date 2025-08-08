@@ -13,7 +13,7 @@ class TaskManager {
         this.editingGroup = null;
         this.currentUser = null;
         this.isAdmin = false;
-    this._tgMainHandlerRef = null;
+        this._tgMainHandlerRef = null;
         
         // Initialize tasks and groups getters for easier access
         Object.defineProperty(this, 'tasks', {
@@ -397,29 +397,34 @@ class TaskManager {
                 this.saveData();
             }
             
-            // Setup MainButton handler - reset completely each time
-            try {
-                // Remove any existing handler
-                if (this._tgMainHandlerRef) {
+            // Setup MainButton handler using proper WebApp event pattern
+            const self = this;
+            
+            // Clear any existing handler
+            if (this._tgMainHandlerRef) {
+                try {
                     tg.MainButton.offClick(this._tgMainHandlerRef);
-                    this._tgMainHandlerRef = null;
+                } catch (e) {
+                    console.log('Error removing handler:', e);
                 }
-            } catch (e) {
-                console.log('Error removing previous handler:', e);
             }
             
-            // Create new handler
-            this._tgMainHandlerRef = function() {
-                console.log('MainButton clicked, current tab:', taskManager.currentTab);
+            // Create handler that properly handles the event
+            this._tgMainHandlerRef = function handleMainButton() {
+                console.log('MainButton event triggered, current tab:', self.currentTab);
                 
-                if (taskManager.currentTab === 'team') {
-                    taskManager.inviteTeamMember();
-                } else if (taskManager.currentTab === 'tasks') {
-                    taskManager.showTaskModal();
+                try {
+                    if (self.currentTab === 'team') {
+                        self.inviteTeamMember();
+                    } else if (self.currentTab === 'tasks') {
+                        self.showTaskModal();
+                    }
+                } catch (error) {
+                    console.error('MainButton handler error:', error);
                 }
             };
             
-            // Register the handler
+            // Register handler
             tg.MainButton.onClick(this._tgMainHandlerRef);
             tg.MainButton.setText('Add Task');
             tg.MainButton.show();
@@ -728,7 +733,6 @@ class TaskManager {
         } else if (this.currentGroupFilter === 'ungrouped') {
             tasksResult = this.taskService.getUngroupedTasks();
             if (tasksResult.success && this.currentFilter !== 'all') {
-                console.log('Before filterTasksByStatus, data type:', typeof tasksResult.data, 'length:', tasksResult.data.length);
                 tasksResult.data = Utils.filterTasksByStatus(tasksResult.data, this.currentFilter);
             }
         } else {
@@ -741,13 +745,6 @@ class TaskManager {
         }
         
         const filteredTasks = tasksResult.data;
-        console.log('Rendering tasks, count:', filteredTasks.length);
-        
-        // Debug task objects
-        if (filteredTasks.length > 0) {
-            console.log('First task type:', typeof filteredTasks[0], 'constructor:', filteredTasks[0].constructor.name);
-            console.log('First task methods:', Object.getOwnPropertyNames(filteredTasks[0].constructor.prototype));
-        }
 
         if (filteredTasks.length === 0) {
             taskList.innerHTML = `
@@ -809,14 +806,7 @@ class TaskManager {
                             <span>👤</span>
                             ${assignee ? assignee.name : 'Unknown'}
                         </div>
-                        <div class="task-status ${task.status}">${(() => {
-                            try {
-                                return Utils.formatStatus(task.status);
-                            } catch (e) {
-                                console.error('formatStatus error:', e, 'task:', task);
-                                return task.status || 'unknown';
-                            }
-                        })()}</div>
+                        <div class="task-status ${task.status}">${task.status ? Utils.formatStatus(task.status) : 'unknown'}</div>
                     </div>
                     ${deadlineInfo}
                     ${reminderInfo}
