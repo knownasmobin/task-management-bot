@@ -121,28 +121,35 @@ class RealTimeSync {
         
         // Show connection status
         this.showConnectionStatus('connected');
+        
+        // Update UI status
+        this.updateTaskManagerStatus();
     }
 
     onConnectionClose() {
         console.log('Real-time sync disconnected');
         this.showConnectionStatus('disconnected');
+        this.updateTaskManagerStatus();
         this.attemptReconnection();
     }
 
     onConnectionError() {
         console.log('Real-time sync error');
         this.showConnectionStatus('error');
+        this.updateTaskManagerStatus();
         this.attemptReconnection();
     }
 
     onConnectionLost() {
         console.log('Internet connection lost');
         this.showConnectionStatus('offline');
+        this.updateTaskManagerStatus();
     }
 
     onConnectionRestored() {
         console.log('Internet connection restored');
         this.showConnectionStatus('connected');
+        this.updateTaskManagerStatus();
         this.syncPendingChanges();
     }
 
@@ -597,6 +604,13 @@ class RealTimeSync {
             toast.style.opacity = '0';
             setTimeout(() => document.body.removeChild(toast), 300);
         }, 3000);
+    }
+
+    updateTaskManagerStatus() {
+        // Update the task manager's real-time status display
+        if (window.taskManager && typeof window.taskManager.updateRealTimeStatus === 'function') {
+            window.taskManager.updateRealTimeStatus();
+        }
     }
 
     // Public API for task manager integration

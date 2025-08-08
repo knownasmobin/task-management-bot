@@ -345,8 +345,22 @@ class TaskManager {
         const notificationStatus = document.getElementById('notificationStatusDisplay');
         
         if (connectionStatus && realTimeSync) {
-            connectionStatus.textContent = realTimeSync.isOnline ? 'Connected' : 'Offline';
-            connectionStatus.className = realTimeSync.isOnline ? 'status-connected' : 'status-offline';
+            let status = 'Connecting...';
+            let statusClass = 'status-connecting';
+            
+            if (!realTimeSync.isOnline) {
+                status = 'Offline';
+                statusClass = 'status-offline';
+            } else if (realTimeSync.ws && realTimeSync.ws.readyState === WebSocket.OPEN) {
+                status = 'Connected';
+                statusClass = 'status-connected';
+            } else if (realTimeSync.ws && realTimeSync.ws.readyState === WebSocket.CLOSED) {
+                status = 'Disconnected';
+                statusClass = 'status-disconnected';
+            }
+            
+            connectionStatus.textContent = status;
+            connectionStatus.className = statusClass;
         }
         
         if (lastSync) {
@@ -385,16 +399,12 @@ class TaskManager {
             
             // Handle main button with a single persistent handler
             if (!this._tgMainHandlerRef) {
-                this._tgMainHandlerRef = (callback) => {
+                this._tgMainHandlerRef = () => {
                     console.log('MainButton pressed, current tab:', this.currentTab);
                     if (this.currentTab === 'team') {
                         this.inviteTeamMember();
                     } else if (this.currentTab === 'tasks') {
                         this.showTaskModal();
-                    }
-                    // Call the callback if provided to signal completion
-                    if (typeof callback === 'function') {
-                        callback();
                     }
                 };
                 tg.MainButton.onClick(this._tgMainHandlerRef);
@@ -739,12 +749,13 @@ class TaskManager {
             let deadlineClass = '';
             if (dueDate) {
                 const formattedDate = new Date(dueDate).toLocaleDateString();
-                const formattedTime = task.getFormattedTimeUntilDeadline ? task.getFormattedTimeUntilDeadline() : null;
-                const severity = task.getDueSoonSeverity ? task.getDueSoonSeverity() : 'normal';
+                const formattedTime = (typeof task.getFormattedTimeUntilDeadline === 'function') ? task.getFormattedTimeUntilDeadline() : null;
+                const severity = (typeof task.getDueSoonSeverity === 'function') ? task.getDueSoonSeverity() : 'normal';
                 
                 deadlineClass = severity;
                 
-                if (task.isOverdue && task.isOverdue()) {
+                const isOverdue = (typeof task.isOverdue === 'function') ? task.isOverdue() : false;
+                if (isOverdue) {
                     deadlineInfo = `<div class="task-due overdue">⚠️ Overdue: ${formattedDate}${formattedTime ? ` (${formattedTime})` : ''}</div>`;
                 } else if (formattedTime) {
                     const icon = severity === 'critical' ? '🚨' : severity === 'urgent' ? '⏰' : '📅';
@@ -756,10 +767,13 @@ class TaskManager {
             
             // Show reminder status
             let reminderInfo = '';
-            if (task.reminderSettings && task.reminderSettings.enabled && task.hasDeadline && task.hasDeadline()) {
-                const upcomingReminders = task.getUpcomingReminders ? task.getUpcomingReminders() : [];
-                if (upcomingReminders.length > 0) {
-                    reminderInfo = `<div class="task-reminders">🔔 ${upcomingReminders.length} reminder${upcomingReminders.length > 1 ? 's' : ''} set</div>`;
+            if (task.reminderSettings && task.reminderSettings.enabled) {
+                const hasDeadline = (typeof task.hasDeadline === 'function') ? task.hasDeadline() : !!dueDate;
+                if (hasDeadline) {
+                    const upcomingReminders = (typeof task.getUpcomingReminders === 'function') ? task.getUpcomingReminders() : [];
+                    if (upcomingReminders.length > 0) {
+                        reminderInfo = `<div class="task-reminders">🔔 ${upcomingReminders.length} reminder${upcomingReminders.length > 1 ? 's' : ''} set</div>`;
+                    }
                 }
             }
             
