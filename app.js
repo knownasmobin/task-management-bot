@@ -373,6 +373,7 @@ class TaskManager {
             }
             
             // Handle main button
+            tg.MainButton.offClick && tg.MainButton.offClick();
             tg.MainButton.setText('Add Task');
             tg.MainButton.onClick(() => this.showTaskModal());
             tg.MainButton.show();
@@ -439,11 +440,7 @@ class TaskManager {
         // Menu button
         document.getElementById('menuBtn').addEventListener('click', () => this.toggleMenu());
 
-        // Invite button (Team tab)
-        const inviteBtn = document.getElementById('inviteBtn');
-        if (inviteBtn) {
-            inviteBtn.addEventListener('click', () => this.inviteTeamMember());
-        }
+    // No in-app invite button; handled by Telegram MainButton in team tab
         
     this.listenersInitialized = true;
     }
@@ -490,11 +487,15 @@ class TaskManager {
             const tg = window.Telegram.WebApp;
             switch (tabName) {
                 case 'tasks':
+                    tg.MainButton.hideProgress();
+                    tg.MainButton.offClick && tg.MainButton.offClick();
                     tg.MainButton.setText('Add Task');
                     tg.MainButton.onClick(() => this.showTaskModal());
                     tg.MainButton.show();
                     break;
                 case 'team':
+                    tg.MainButton.hideProgress();
+                    tg.MainButton.offClick && tg.MainButton.offClick();
                     tg.MainButton.setText('Invite Member');
                     tg.MainButton.onClick(() => this.inviteTeamMember());
                     tg.MainButton.show();
