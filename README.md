@@ -72,17 +72,23 @@ docker build -t telegram-task-manager .
 docker run -p 3000:3000 --env-file .env telegram-task-manager
 ```
 
-Using docker-compose (includes optional services via profiles):
+Development compose (hot reload):
 ```powershell
-docker-compose up -d
-docker-compose logs -f
-# Stop
-docker-compose down
+npm run compose:dev
+npm run compose:logs
+npm run compose:down
+```
+
+Production compose:
+```powershell
+npm run compose:prod
+npm run compose:logs
+npm run compose:down
 ```
 
 Notes:
-- The compose file defines optional services (redis, postgres, nginx, monitoring).
-- For development with hot reload, use the `task-manager-dev` service (profile: development).
+- Traefik labels were removed from production compose; bring your own reverse proxy/load balancer.
+- The prod compose includes optional services (redis, postgres, nginx, monitoring). Configure as needed.
 
 ## Troubleshooting
 - 401 on /webhook: Ensure `TELEGRAM_WEBHOOK_SECRET` matches the secret you set via setWebhook.

@@ -10,11 +10,12 @@
   "test": "jest --passWithNoTests",
   "test:coverage": "jest --coverage --passWithNoTests",
     "lint": "eslint .",
-    "docker:build": "docker build -t telegram-task-manager .",
-    "docker:run": "docker run -p 3000:3000 --env-file .env telegram-task-manager",
-    "docker:compose": "docker-compose up -d",
-    "docker:logs": "docker-compose logs -f",
-    "docker:stop": "docker-compose down"
+  "docker:build": "docker build -t telegram-task-manager .",
+  "docker:run": "docker run -p 3000:3000 --env-file .env telegram-task-manager",
+  "compose:dev": "docker compose -f docker-compose.dev.yml up -d",
+  "compose:prod": "docker compose -f docker-compose.prod.yml up -d",
+  "compose:down": "docker compose down",
+  "compose:logs": "docker compose logs -f"
   },
   "keywords": [
     "telegram",

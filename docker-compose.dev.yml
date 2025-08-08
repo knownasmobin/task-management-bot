@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  task-manager-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: telegram-task-manager-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "9229:9229"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+      - ADMIN_TELEGRAM_ID=${ADMIN_TELEGRAM_ID}
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:3000/webhook}
+      - LOG_LEVEL=debug
+    volumes:
+      - .:/app
+      - node_modules_dev:/app/node_modules
+      - ./logs:/app/logs
+    networks:
+      - task-manager-network
+
+networks:
+  task-manager-network:
+    driver: bridge
+
+volumes:
+  node_modules_dev:
+    driver: local
