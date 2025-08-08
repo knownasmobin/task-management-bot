@@ -23,6 +23,8 @@ class TaskManager {
     // Ensure UI listeners bind even before auth completes
     this.listenersInitialized = false;
     this.initEventListeners();
+    // Initialize Telegram integration early so MainButton works immediately
+    this.initTelegram();
     }
 
     onUserAuthenticated(userInfo) {
@@ -40,7 +42,7 @@ class TaskManager {
             localStorage.setItem('teamMembers', JSON.stringify(this.teamMembers));
         }
         
-                this.initTelegram();
+        this.initTelegram();
         this.initEventListeners();
         this.renderTasks();
         this.renderGroups();
@@ -894,41 +896,49 @@ class TaskManager {
             botUrl ? `Or start the bot: ${botUrl}` : ''
         ].filter(Boolean).join('\n');
 
-    // Use t.me share URL (works reliably in Telegram WebApp)
-    const shareLink = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
+    // Prefer sharing the bot deep link so Telegram routes best (falls back to app URL)
+    const botStartAppLink = botUser ? `https://t.me/${botUser}?startapp=join` : '';
+    const shareTarget = botStartAppLink || appUrl;
+    const shareLink = `https://t.me/share/url?url=${encodeURIComponent(shareTarget)}&text=${encodeURIComponent(shareText)}`;
 
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
-            let attempted = false;
+            // Synchronous anchor click tends to be most reliable across devices
+            try {
+                const a = document.createElement('a');
+                a.href = shareLink;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch (err) {
+                console.debug('Anchor click fallback failed', err);
+            }
             try {
                 if (typeof tg.openLink === 'function') {
                     tg.openLink(shareLink);
-                    attempted = true;
                 }
             } catch (err) {
                 console.debug('openLink failed, will try openTelegramLink', err);
             }
-            if (!attempted) {
-                try {
-                    if (typeof tg.openTelegramLink === 'function') {
-                        tg.openTelegramLink(shareLink);
-                        attempted = true;
-                    }
-                } catch (err2) {
-                    console.debug('openTelegramLink failed, trying browser fallbacks', err2);
+            try {
+                if (typeof tg.openTelegramLink === 'function') {
+                    tg.openTelegramLink(shareLink);
                 }
+            } catch (err2) {
+                console.debug('openTelegramLink failed, trying browser fallbacks', err2);
             }
-            // If we tried via Telegram APIs, also schedule a direct navigation as a last resort
-            if (attempted) {
-                setTimeout(() => {
-                    try { window.location.assign(shareLink); } catch (err3) { console.debug('Direct assign failed', err3); }
-                }, 180);
-                return;
-            }
+            // Also schedule a direct navigation as last resort
+            setTimeout(() => {
+                try { window.location.assign(shareLink); } catch (err3) { console.debug('Direct assign failed', err3); }
+            }, 150);
+            return;
         }
 
         // Browser fallback: Web Share API or clipboard
-        if (navigator.share) {
+    if (navigator.share) {
             navigator.share({ title: 'Join our Task Manager', text: shareText, url: appUrl })
                 .catch(() => {/* ignore */});
         } else if (navigator.clipboard) {
