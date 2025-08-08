@@ -13,20 +13,23 @@ if (typeof fetch === 'undefined') {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Behind reverse proxies (e.g., Nginx), trust X-Forwarded-* headers
+app.set('trust proxy', true);
 
 // Security middleware
 app.use(helmet({
     contentSecurityPolicy: {
+        useDefaults: true,
         directives: {
-            defaultSrc: ["'self'"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://telegram.org"],
+            defaultSrc: ["'self'", 'https://telegram.org', 'https://web.telegram.org'],
+            scriptSrc: ["'self'", "'unsafe-inline'", 'https://telegram.org', 'https://web.telegram.org'],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://api.telegram.org", "wss:", "ws:"],
-            fontSrc: ["'self'"],
+            connectSrc: ["'self'", 'https://api.telegram.org', 'https://telegram.org', 'https://web.telegram.org', "wss:", "ws:"],
+            fontSrc: ["'self'", 'https://telegram.org', 'https://web.telegram.org'],
             objectSrc: ["'none'"],
             mediaSrc: ["'self'"],
-            frameSrc: ["'none'"],
+            frameSrc: ["'self'", 'https://telegram.org', 'https://web.telegram.org'],
         },
     },
     crossOriginEmbedderPolicy: false
@@ -36,8 +39,9 @@ app.use(helmet({
 app.use(compression());
 
 // CORS middleware
+const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : null;
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['*'],
+    origin: allowedOrigins || true, // reflect request origin if not specified
     credentials: true
 }));
 
@@ -45,7 +49,11 @@ app.use(cors({
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 1000, // limit each IP to 1000 requests per windowMs
-    message: 'Too many requests from this IP, please try again later.'
+    message: 'Too many requests from this IP, please try again later.',
+    standardHeaders: true,
+    legacyHeaders: false,
+    // Avoid double-limiting webhook (Nginx already limits; we also have a specific limiter below)
+    skip: (req) => req.path === '/webhook'
 });
 app.use(limiter);
 

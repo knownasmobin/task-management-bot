@@ -2,11 +2,12 @@ version: '3.8'
 
 services:
   task-manager:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: production
-    container_name: telegram-task-manager
+    image: ghcr.io/knownasmobin/task-management-bot:sha-dd42eef
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    #   target: production
+    # container_name: telegram-task-manager
     restart: unless-stopped
     ports:
       - "${PORT:-3000}:3000"
