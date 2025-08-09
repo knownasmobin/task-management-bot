@@ -5,6 +5,35 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+
+// Import Telegram Bot
+const TelegramBot = require('./telegram-bot.js');
+
+// Redis for session management
+const redis = require('redis');
+let redisClient = null;
+
+// Initialize Redis connection
+async function initRedis() {
+    try {
+        redisClient = redis.createClient({
+            host: process.env.REDIS_HOST || 'localhost',
+            port: process.env.REDIS_PORT || 6379,
+            password: process.env.REDIS_PASSWORD || undefined
+        });
+        
+        redisClient.on('error', (err) => {
+            console.error('Redis error:', err);
+        });
+        
+        await redisClient.connect();
+        console.log('Redis connected successfully');
+    } catch (error) {
+        console.warn('Redis not available, using in-memory storage:', error.message);
+        // Fallback to in-memory storage
+        redisClient = null;
+    }
+}
 // Polyfill fetch for Node < 18 (node-fetch v3 is ESM-only)
 if (typeof fetch === 'undefined') {
     global.fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
@@ -14,6 +43,87 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 // Behind reverse proxies (e.g., Nginx), trust X-Forwarded-* headers
 app.set('trust proxy', true);
+
+// Initialize Redis and Telegram Bot
+let telegramBot = null;
+const inMemorySessions = new Map(); // Fallback for when Redis is not available
+
+// Initialize services
+async function initServices() {
+    // Initialize Redis
+    await initRedis();
+    
+    // Initialize Telegram Bot
+    if (process.env.TELEGRAM_BOT_TOKEN) {
+        telegramBot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
+        console.log('Telegram Bot initialized');
+    } else {
+        console.warn('TELEGRAM_BOT_TOKEN not provided - bot notifications disabled');
+    }
+}
+
+// Session management functions
+async function createSession(telegramId, userInfo) {
+    const sessionId = `session:${telegramId}:${Date.now()}`;
+    const sessionData = {
+        telegram_id: telegramId,
+        user_info: userInfo,
+        is_admin: telegramId.toString() === (process.env.ADMIN_TELEGRAM_ID || ''),
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+    };
+    
+    if (redisClient) {
+        await redisClient.setEx(sessionId, 24 * 60 * 60, JSON.stringify(sessionData)); // 24 hours TTL
+        await redisClient.setEx(`user:${telegramId}`, 24 * 60 * 60, sessionId); // Map user to session
+    } else {
+        // Fallback to in-memory
+        inMemorySessions.set(sessionId, sessionData);
+        inMemorySessions.set(`user:${telegramId}`, sessionId);
+    }
+    
+    return sessionId;
+}
+
+async function getSession(sessionId) {
+    if (redisClient) {
+        const sessionData = await redisClient.get(sessionId);
+        return sessionData ? JSON.parse(sessionData) : null;
+    } else {
+        // Fallback to in-memory
+        return inMemorySessions.get(sessionId) || null;
+    }
+}
+
+async function getUserSession(telegramId) {
+    if (redisClient) {
+        const sessionId = await redisClient.get(`user:${telegramId}`);
+        if (sessionId) {
+            return await getSession(sessionId);
+        }
+    } else {
+        // Fallback to in-memory
+        const sessionId = inMemorySessions.get(`user:${telegramId}`);
+        if (sessionId) {
+            return inMemorySessions.get(sessionId);
+        }
+    }
+    return null;
+}
+
+async function deleteSession(sessionId, telegramId) {
+    if (redisClient) {
+        await redisClient.del(sessionId);
+        await redisClient.del(`user:${telegramId}`);
+    } else {
+        // Fallback to in-memory
+        inMemorySessions.delete(sessionId);
+        inMemorySessions.delete(`user:${telegramId}`);
+    }
+}
+
+// Initialize services on startup
+initServices();
 
 // Security middleware
 app.use(helmet({
@@ -143,6 +253,115 @@ app.get('/api/health', (req, res) => {
     });
 });
 
+// Secure authentication endpoint
+app.post('/api/auth/telegram', async (req, res) => {
+    try {
+        const { initData } = req.body;
+        
+        if (!initData || !initData.user) {
+            return res.status(400).json({ error: 'Invalid authentication data' });
+        }
+
+        const user = initData.user;
+        const userInfo = {
+            telegram_id: user.id,
+            first_name: user.first_name,
+            last_name: user.last_name || '',
+            username: user.username || '',
+            photo_url: user.photo_url || '',
+            auth_date: initData.auth_date
+        };
+
+        // Create secure server-side session
+        const sessionId = await createSession(user.id, userInfo);
+        const sessionData = await getSession(sessionId);
+
+        // Return session token and user role (without exposing admin ID)
+        res.json({
+            success: true,
+            session_token: sessionId,
+            user: {
+                telegram_id: user.id,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                username: user.username,
+                role: sessionData.is_admin ? 'admin' : 'user',
+                is_admin: sessionData.is_admin
+            }
+        });
+
+    } catch (error) {
+        console.error('Error during authentication:', error);
+        res.status(500).json({ error: 'Authentication failed' });
+    }
+});
+
+// Middleware to verify session token
+async function verifySession(req, res, next) {
+    try {
+        const sessionToken = req.headers['x-session-token'] || req.query.session_token;
+        
+        if (!sessionToken) {
+            return res.status(401).json({ error: 'Session token required' });
+        }
+
+        const session = await getSession(sessionToken);
+        if (!session) {
+            return res.status(401).json({ error: 'Invalid or expired session' });
+        }
+
+        // Check if session expired
+        if (new Date() > new Date(session.expires_at)) {
+            await deleteSession(sessionToken, session.telegram_id);
+            return res.status(401).json({ error: 'Session expired' });
+        }
+
+        req.user = session;
+        next();
+    } catch (error) {
+        console.error('Session verification error:', error);
+        res.status(500).json({ error: 'Session verification failed' });
+    }
+}
+
+// Admin-only middleware
+function requireAdmin(req, res, next) {
+    if (!req.user || !req.user.is_admin) {
+        return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+}
+
+// User approval notification endpoint
+app.post('/api/notify/user-request', async (req, res) => {
+    try {
+        if (!telegramBot) {
+            return res.status(503).json({ error: 'Telegram bot not available' });
+        }
+
+        const { userRequest } = req.body;
+        if (!userRequest || !userRequest.telegram_id) {
+            return res.status(400).json({ error: 'Invalid user request data' });
+        }
+
+        const adminId = process.env.ADMIN_TELEGRAM_ID;
+        if (!adminId) {
+            return res.status(500).json({ error: 'Admin ID not configured' });
+        }
+
+        // Store the approval request in bot storage
+        telegramBot.addPendingApproval(userRequest);
+
+        // Send notification to admin
+        await telegramBot.sendNewUserRequestNotification(adminId, userRequest);
+
+        res.json({ success: true, message: 'Admin notified successfully' });
+    } catch (error) {
+        console.error('Error sending user request notification:', error);
+        res.status(500).json({ error: 'Failed to send notification' });
+    }
+});
+
 // Get webhook statistics
 app.get('/api/webhook/stats', (req, res) => {
     const stats = {
@@ -236,6 +455,15 @@ function getUpdateTypeStats() {
 
 async function processWebhookUpdate(update) {
     const userId = getUserIdFromUpdate(update);
+    
+    // Process update with bot instance if available
+    if (telegramBot) {
+        try {
+            await telegramBot.processWebhookUpdate(update);
+        } catch (error) {
+            console.error('Bot processing error:', error);
+        }
+    }
     
     if (userId) {
         // Update user session

@@ -10,6 +10,10 @@ class TelegramBot {
         this.rateLimits = new Map(); // Track rate limits per user
         this.deliveryStatus = new Map(); // Track message delivery
         
+        // Server-side storage (in production, use Redis/Database)
+        this.pendingApprovals = new Map(); // telegram_id -> approval_request
+        this.authorizedUsers = new Map();  // telegram_id -> user_data
+        
         this.initializeBot();
     }
 
@@ -80,6 +84,35 @@ class TelegramBot {
     async sendDailySummaryNotification(userId, stats) {
         const message = this.formatDailySummaryMessage(stats);
         const keyboard = this.getSummaryKeyboard();
+        
+        return await this.sendNotification(userId, message, keyboard);
+    }
+
+    // User approval methods
+    async sendNewUserRequestNotification(adminId, userRequest) {
+        const message = `🔔 New User Access Request
+
+👤 **${userRequest.first_name} ${userRequest.last_name || ''}**
+📱 Phone: ${userRequest.phone_number}
+🆔 Telegram ID: ${userRequest.telegram_id}
+👤 Username: ${userRequest.username ? '@' + userRequest.username : 'Not set'}
+📅 Requested: ${new Date(userRequest.requested_at).toLocaleString()}
+
+Please review and approve or reject this request.`;
+
+        const keyboard = this.getUserApprovalKeyboard(userRequest.telegram_id);
+        
+        return await this.sendNotification(adminId, message, keyboard);
+    }
+
+    async sendUserApprovalNotification(userId, approved, userName) {
+        const message = approved 
+            ? `✅ Welcome ${userName}! Your account has been approved. You can now use the task manager.
+
+🚀 Open the app to start managing your tasks!`
+            : `❌ Your access request has been declined. Please contact the administrator if you believe this is an error.`;
+        
+        const keyboard = approved ? this.getWelcomeKeyboard() : null;
         
         return await this.sendNotification(userId, message, keyboard);
     }
@@ -193,6 +226,20 @@ class TelegramBot {
         return {
             inline_keyboard: [
                 [{ text: '🚀 Open Mini App', web_app: { url: process.env.APP_URL || 'http://localhost:3000' } }]
+            ]
+        };
+    }
+
+    getUserApprovalKeyboard(userId) {
+        return {
+            inline_keyboard: [
+                [
+                    { text: '✅ Approve', callback_data: `approve_user:${userId}` },
+                    { text: '❌ Reject', callback_data: `reject_user:${userId}` }
+                ],
+                [
+                    { text: '👤 View Profile', callback_data: `view_user:${userId}` }
+                ]
             ]
         };
     }
@@ -526,6 +573,15 @@ class TelegramBot {
                 if (data.startsWith('complete_')) {
                     const taskId = data.replace('complete_', '');
                     await this.handleTaskCompletion(userId, taskId);
+                } else if (data.startsWith('approve_user:')) {
+                    const targetUserId = data.replace('approve_user:', '');
+                    await this.handleUserApproval(userId, targetUserId, true);
+                } else if (data.startsWith('reject_user:')) {
+                    const targetUserId = data.replace('reject_user:', '');
+                    await this.handleUserApproval(userId, targetUserId, false);
+                } else if (data.startsWith('view_user:')) {
+                    const targetUserId = data.replace('view_user:', '');
+                    await this.handleViewUserProfile(userId, targetUserId);
                 }
                 break;
         }
@@ -539,6 +595,126 @@ class TelegramBot {
 
         // Removed keyboard - no buttons in bot interface
         return await this.sendNotification(userId, message);
+    }
+
+    // User approval handler methods
+    async handleUserApproval(adminId, targetUserId, approved) {
+        try {
+            // Load user data from storage
+            const userRequest = await this.getUserRequestData(targetUserId);
+            if (!userRequest) {
+                await this.sendNotification(adminId, '❌ User request not found or already processed.');
+                return;
+            }
+
+            if (approved) {
+                // Add user to authorized users
+                await this.approveUser(userRequest);
+                
+                // Send approval notification to user
+                await this.sendUserApprovalNotification(
+                    parseInt(targetUserId), 
+                    true, 
+                    userRequest.first_name
+                );
+                
+                // Send confirmation to admin
+                await this.sendNotification(adminId, 
+                    `✅ User approved successfully!\n\n` +
+                    `👤 ${userRequest.first_name} can now access the app.`
+                );
+            } else {
+                // Remove from pending approvals
+                await this.rejectUser(targetUserId);
+                
+                // Send rejection notification to user
+                await this.sendUserApprovalNotification(
+                    parseInt(targetUserId), 
+                    false, 
+                    userRequest.first_name
+                );
+                
+                // Send confirmation to admin
+                await this.sendNotification(adminId, 
+                    `❌ User request rejected.\n\n` +
+                    `👤 ${userRequest.first_name} has been notified.`
+                );
+            }
+        } catch (error) {
+            console.error('Error handling user approval:', error);
+            await this.sendNotification(adminId, '❌ Error processing approval. Please try again.');
+        }
+    }
+
+    async handleViewUserProfile(adminId, targetUserId) {
+        try {
+            const userRequest = await this.getUserRequestData(targetUserId);
+            if (!userRequest) {
+                await this.sendNotification(adminId, '❌ User data not found.');
+                return;
+            }
+
+            const message = `👤 **User Profile**
+
+📛 **Name:** ${userRequest.first_name} ${userRequest.last_name || ''}
+📱 **Phone:** ${userRequest.phone_number}
+🆔 **Telegram ID:** ${userRequest.telegram_id}
+👤 **Username:** ${userRequest.username ? '@' + userRequest.username : 'Not set'}
+📅 **Requested:** ${new Date(userRequest.requested_at).toLocaleString()}
+📊 **Status:** ${userRequest.status || 'Pending'}
+
+What would you like to do with this user?`;
+
+            const keyboard = this.getUserApprovalKeyboard(targetUserId);
+            await this.sendNotification(adminId, message, keyboard);
+        } catch (error) {
+            console.error('Error viewing user profile:', error);
+            await this.sendNotification(adminId, '❌ Error loading user profile.');
+        }
+    }
+
+    async getUserRequestData(userId) {
+        return this.pendingApprovals.get(userId.toString());
+    }
+
+    async approveUser(userRequest) {
+        // Add to authorized users
+        const userInfo = {
+            ...userRequest,
+            approved_at: new Date().toISOString(),
+            approved_by: 'bot_admin',
+            status: 'active',
+            role: 'user'
+        };
+        this.authorizedUsers.set(userRequest.telegram_id.toString(), userInfo);
+
+        // Remove from pending approvals
+        this.pendingApprovals.delete(userRequest.telegram_id.toString());
+    }
+
+    async rejectUser(userId) {
+        // Remove from pending approvals
+        this.pendingApprovals.delete(userId.toString());
+    }
+
+    // Method to add new approval request
+    addPendingApproval(userRequest) {
+        this.pendingApprovals.set(userRequest.telegram_id.toString(), userRequest);
+    }
+
+    // Method to check if user is authorized
+    isUserAuthorized(userId) {
+        return this.authorizedUsers.has(userId.toString());
+    }
+
+    // Get all pending approvals (for admin dashboard)
+    getAllPendingApprovals() {
+        return Array.from(this.pendingApprovals.values());
+    }
+
+    // Get all authorized users (for admin dashboard)  
+    getAllAuthorizedUsers() {
+        return Array.from(this.authorizedUsers.values());
     }
 
     // Get delivery statistics

@@ -29,59 +29,66 @@ class AuthManager {
 
     async authenticateWithTelegram(initData) {
         try {
-            const user = initData.user;
-            const authDate = initData.auth_date;
-            
-            // Verify the authentication data (in production, this should be done server-side)
-            if (this.verifyTelegramAuth(initData)) {
-                const userInfo = {
-                    telegram_id: user.id,
-                    first_name: user.first_name,
-                    last_name: user.last_name || '',
-                    username: user.username || '',
-                    phone_number: user.phone_number || '',
-                    language_code: user.language_code || 'en',
-                    is_premium: user.is_premium || false,
-                    photo_url: user.photo_url || '',
-                    auth_date: authDate
-                };
+            // Send authentication data to server for secure verification
+            const response = await fetch('/api/auth/telegram', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ initData })
+            });
 
-                // Check if user is admin
-                if (this.config.isAdmin(user.id)) {
-                    this.isAdmin = true;
-                    userInfo.role = 'admin';
-                    // Admin gets access immediately
-                    this.authenticateUser(userInfo);
-                } else if (this.config.isValidUser(user.id)) {
-                    userInfo.role = 'user';
-                    // Check if user has shared contact
-                    const hasSharedContact = this.hasUserSharedContact(user.id);
-                    if (hasSharedContact) {
-                        this.authenticateUser(userInfo);
+            if (response.ok) {
+                const authResult = await response.json();
+                
+                if (authResult.success) {
+                    console.log('✅ Server authentication successful');
+                    
+                    // Store session token securely (httpOnly would be better, but this is WebApp)
+                    sessionStorage.setItem('session_token', authResult.session_token);
+                    
+                    // Set up user info
+                    this.currentUser = authResult.user;
+                    this.isAuthenticated = true;
+                    this.isAdmin = authResult.user.is_admin;
+                    
+                    if (authResult.user.is_admin) {
+                        console.log('✅ Admin access granted');
+                        this.authenticateUser(authResult.user);
                     } else {
-                        // Request contact sharing
-                        this.requestContactSharing(userInfo);
+                        console.log('👤 Regular user authenticated');
+                        // For regular users, still need contact/approval flow
+                        await this.handleRegularUserAuth(authResult.user);
                     }
                 } else {
-                    // Check if user already has a pending approval request
-                    const pendingApprovals = JSON.parse(localStorage.getItem('pending_approvals') || '[]');
-                    const existingRequest = pendingApprovals.find(req => req.telegram_id === user.id);
-                    
-                    if (existingRequest) {
-                        // User already requested approval, show waiting message
-                        console.log('User has existing approval request:', existingRequest);
-                        this.showAwaitingApprovalMessage(userInfo);
-                    } else {
-                        // New user - request contact sharing for registration
-                        this.requestContactSharing(userInfo);
-                    }
+                    throw new Error('Authentication failed on server');
                 }
             } else {
-                throw new Error('Invalid Telegram authentication data');
+                const error = await response.json();
+                throw new Error(error.error || 'Server authentication failed');
             }
         } catch (error) {
             console.error('Authentication error:', error);
             this.showAuthError(error.message);
+        }
+    }
+
+    async handleRegularUserAuth(user) {
+        // Check if user has existing approval or needs contact sharing
+        // This logic stays the same but now checks server-side data
+        const hasSharedContact = this.hasUserSharedContact(user.telegram_id);
+        if (hasSharedContact) {
+            this.authenticateUser(user);
+        } else {
+            // Check for pending approval or request contact sharing
+            const pendingApprovals = JSON.parse(localStorage.getItem('pending_approvals') || '[]');
+            const existingRequest = pendingApprovals.find(req => req.telegram_id === user.telegram_id);
+            
+            if (existingRequest) {
+                this.showAwaitingApprovalMessage(user);
+            } else {
+                this.requestContactSharing(user);
+            }
         }
     }
 
@@ -421,7 +428,9 @@ class AuthManager {
         // Show waiting for approval message
         this.showAwaitingApprovalMessage(userInfo);
 
-        // Notify admin (in a real app, this would send a notification to the admin)
+        // Notify admin via Telegram Bot
+        this.notifyAdminOfNewUser(approvalRequest);
+
         console.log('New user approval request:', approvalRequest);
     }
 
@@ -1199,6 +1208,59 @@ class AuthManager {
         }
     }
 
+    async notifyAdminOfNewUser(approvalRequest) {
+        try {
+            // Send notification to server API
+            const response = await fetch('/api/notify/user-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ userRequest: approvalRequest })
+            });
+
+            if (response.ok) {
+                console.log('Admin notified via Telegram bot');
+                this.showToast('✅ Admin has been notified of your request!');
+            } else {
+                const error = await response.json();
+                console.warn('Failed to notify admin:', error);
+                this.showToast('⚠️ Approval request submitted (notification may be delayed)');
+            }
+        } catch (error) {
+            console.error('Error notifying admin:', error);
+            this.showToast('⚠️ Approval request submitted (notification may be delayed)');
+        }
+    }
+
+    // Helper function to make authenticated API calls
+    async makeAuthenticatedRequest(url, options = {}) {
+        const sessionToken = sessionStorage.getItem('session_token');
+        if (!sessionToken) {
+            throw new Error('No session token - user not authenticated');
+        }
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-Session-Token': sessionToken,
+            ...options.headers
+        };
+
+        const response = await fetch(url, {
+            ...options,
+            headers
+        });
+
+        if (response.status === 401) {
+            // Session expired, redirect to login
+            sessionStorage.removeItem('session_token');
+            this.logout();
+            throw new Error('Session expired');
+        }
+
+        return response;
+    }
+
     showToast(message, duration = 3000) {
         // Remove any existing toast
         const existingToast = document.querySelector('.auth-toast');
@@ -1251,26 +1313,18 @@ class AuthManager {
 let auth;
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.auth) {
-        // Skip Config in browser - use safe fallback
+        // Minimal config for client-side (admin check now happens server-side)
         const config = { 
             get: (key) => {
                 const defaults = {
                     'ADMIN_USERNAME': 'admin',
-                    'ADMIN_PHONE_NUMBER': 'Contact through Telegram',
-                    'ADMIN_TELEGRAM_ID': localStorage.getItem('admin_telegram_id') || ''
+                    'ADMIN_PHONE_NUMBER': 'Contact through Telegram'
                 };
                 return defaults[key] || false;
             },
             getAuthorizedUsers: () => JSON.parse(localStorage.getItem('authorized_users') || '[]'),
-            isAdmin: (telegramId) => {
-                const adminId = localStorage.getItem('admin_telegram_id') || '';
-                return adminId && telegramId && adminId.toString() === telegramId.toString();
-            },
             isValidUser: (telegramId) => {
-                // Check if admin first
-                if (config.isAdmin(telegramId)) return true;
-                
-                // Check authorized users
+                // Check authorized users (admin check now happens server-side)
                 const authorizedUsers = JSON.parse(localStorage.getItem('authorized_users') || '[]');
                 return authorizedUsers.some(user => user.telegram_id.toString() === telegramId.toString());
             },
