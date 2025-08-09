@@ -35,13 +35,21 @@ async function initRedis() {
         });
         
         redisClient.on('error', (err) => {
-            console.error('Redis error:', err);
+            // Suppress connection errors during initialization - we'll handle fallback
+            if (err.code !== 'ECONNREFUSED') {
+                console.error('Redis error:', err);
+            }
         });
         
         await redisClient.connect();
         console.log('Redis connected successfully');
     } catch (error) {
-        console.warn('Redis connection failed, using in-memory storage:', error.message);
+        if (error.code === 'ECONNREFUSED') {
+            console.warn('⚠️  Redis server not running - using in-memory session storage');
+            console.log('   To use Redis: Install and start Redis server, then restart the app');
+        } else {
+            console.warn('Redis connection failed, using in-memory storage:', error.message);
+        }
         // Fallback to in-memory storage
         redisClient = null;
     }
