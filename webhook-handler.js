@@ -101,8 +101,13 @@ class WebhookHandler {
                            `• /tasks - View your tasks\n` +
                            `• /create - Create a new task`;
 
-            // Removed keyboard - no buttons in bot interface
-            await this.bot.sendNotification(userId, response);
+            // Add single Open App button
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '🚀 Open Mini App', web_app: { url: process.env.APP_URL } }]
+                ]
+            };
+            await this.bot.sendNotification(userId, response, keyboard);
         } else if (text.includes('help')) {
             await this.bot.handleHelpCommand(userId);
         } else {
@@ -110,8 +115,13 @@ class WebhookHandler {
             const response = `👋 Hi there!\n\n` +
                            `I'm your Task Manager bot. Use /help to see what I can do, or open the app directly!`;
 
-            // Removed keyboard - no buttons in bot interface
-            await this.bot.sendNotification(userId, response);
+            // Add single Open App button
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: '🚀 Open Mini App', web_app: { url: process.env.APP_URL } }]
+                ]
+            };
+            await this.bot.sendNotification(userId, response, keyboard);
         }
     }
 

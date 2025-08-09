@@ -1,6 +1,6 @@
 class PhoneVerification {
     constructor(config) {
-        this.config = config;
+        this.config = config || { get: () => false }; // Provide safe fallback for browser
         this.pendingVerifications = new Map();
         this.verifiedNumbers = JSON.parse(localStorage.getItem('verified_phones') || '[]');
     }
@@ -350,10 +350,10 @@ class PhoneVerification {
 // Initialize phone verification
 let phoneVerification;
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.Config) {
-        const config = new Config();
-    phoneVerification = new PhoneVerification(config);
-    // expose for debugging to avoid unused var warning in some bundlers
-    window.phoneVerification = phoneVerification;
+    // Skip Config initialization in browser - use default settings
+    if (window.PhoneVerification) {
+        phoneVerification = new PhoneVerification(null);
+        // expose for debugging to avoid unused var warning in some bundlers
+        window.phoneVerification = phoneVerification;
     }
 });

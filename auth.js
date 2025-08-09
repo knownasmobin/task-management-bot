@@ -1032,7 +1032,17 @@ class AuthManager {
 let auth;
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.auth) {
-        const config = new Config();
+        // Skip Config in browser - use safe fallback
+        const config = { 
+            get: (key) => {
+                const defaults = {
+                    'ADMIN_USERNAME': 'admin',
+                    'ADMIN_PHONE_NUMBER': 'Contact through Telegram'
+                };
+                return defaults[key] || false;
+            },
+            getAuthorizedUsers: () => JSON.parse(localStorage.getItem('authorized_users') || '[]')
+        };
         auth = new AuthManager(config);
         window.auth = auth;
     }

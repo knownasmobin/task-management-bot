@@ -189,8 +189,12 @@ class TelegramBot {
     }
 
     getWelcomeKeyboard() {
-        // Return empty keyboard - no buttons in bot interface
-        return null;
+        // Return single "Open App" button
+        return {
+            inline_keyboard: [
+                [{ text: '🚀 Open Mini App', web_app: { url: process.env.APP_URL || 'http://localhost:3000' } }]
+            ]
+        };
     }
 
     getSummaryKeyboard() {
@@ -345,8 +349,9 @@ class TelegramBot {
                        `• Get notifications for updates\n\n` +
                        `💡 _Pro tip: You can use /tasks to quickly view your tasks!_`;
 
-        // Removed keyboard - no buttons in bot interface
-        return await this.sendNotification(userId, message);
+        // Add single Open App button
+        const keyboard = this.getWelcomeKeyboard();
+        return await this.sendNotification(userId, message, keyboard);
     }
 
     async handleTasksCommand(userId) {

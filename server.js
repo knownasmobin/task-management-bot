@@ -273,16 +273,34 @@ async function processBotCommand(message) {
         
         switch (command) {
             case '/start':
-                response = `👋 *Welcome to Task Manager!*\n\nYour personal task management assistant.\n\n🚀 Open the app from the attachment menu or direct link!`;
-                // Removed keyboard - no buttons in bot interface
+                response = `👋 *Welcome to Task Manager!*\n\nYour personal task management assistant.\n\n🚀 Open the app using the button below!`;
+                if (process.env.APP_URL) {
+                    keyboard = {
+                        inline_keyboard: [
+                            [{ text: '🚀 Open Mini App', web_app: { url: process.env.APP_URL } }]
+                        ]
+                    };
+                }
                 break;
             case '/help':
                 response = `❓ *Task Manager Help*\n\n*Available Commands:*\n• /start - Welcome message\n• /tasks - View your tasks\n• /help - This help message\n\n💡 Use the app for full functionality!`;
-                // Removed keyboard - no buttons in bot interface
+                if (process.env.APP_URL) {
+                    keyboard = {
+                        inline_keyboard: [
+                            [{ text: '🚀 Open Mini App', web_app: { url: process.env.APP_URL } }]
+                        ]
+                    };
+                }
                 break;
             case '/tasks':
-                response = `📋 *Your Tasks*\n\nOpen the Task Manager app to view and manage your tasks.\n\n💡 Use the attachment menu or direct link!`;
-                // Removed keyboard - no buttons in bot interface
+                response = `📋 *Your Tasks*\n\nOpen the Task Manager app to view and manage your tasks.\n\n💡 Tap the button below!`;
+                if (process.env.APP_URL) {
+                    keyboard = {
+                        inline_keyboard: [
+                            [{ text: '📋 Open Task Manager', web_app: { url: process.env.APP_URL } }]
+                        ]
+                    };
+                }
                 break;
             default:
                 response = `❓ Unknown command: ${command}\n\nUse /help to see available commands.`;
