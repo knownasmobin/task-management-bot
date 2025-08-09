@@ -208,15 +208,16 @@ class AuthManager {
             const tg = window.Telegram.WebApp;
             
             try {
-                // Use callback-based approach - this is how Telegram WebApp API works
+                // Use Telegram WebApp API for contact sharing
                 if (typeof tg.requestContact === 'function') {
-                    tg.requestContact((contact) => {
-                        console.log('Contact received:', contact);
+                    tg.requestContact((result) => {
+                        console.log('Contact request result:', result);
                         
-                        if (contact && contact.phone_number) {
-                            this.processSharedContact(currentUserInfo, contact);
+                        if (result) {
+                            // If requestContact returns true, we need to get the actual contact data
+                            this.getContactData(currentUserInfo, tg);
                         } else {
-                            console.log('Contact sharing failed or cancelled:', contact);
+                            console.log('Contact sharing was cancelled by user');
                             this.showContactError('Contact sharing was cancelled');
                         }
                     });
@@ -245,6 +246,90 @@ class AuthManager {
         }
     }
 
+    async getContactData(currentUserInfo, tg) {
+        try {
+            console.log('Attempting to get contact data...');
+            
+            // Try using the custom method approach seen in logs
+            if (tg.invokeCustomMethod) {
+                tg.invokeCustomMethod('getRequestedContact', {}, (error, result) => {
+                    if (error) {
+                        console.error('Error getting contact data:', error);
+                        this.showContactError('Failed to retrieve contact information');
+                    } else {
+                        console.log('Contact data retrieved:', result);
+                        this.parseAndProcessContact(currentUserInfo, result);
+                    }
+                });
+            } else if (tg.sendData) {
+                // Alternative approach - some versions might use sendData
+                console.log('Trying sendData approach...');
+                // Wait a moment for the contact to be available
+                setTimeout(() => {
+                    const contactData = tg.initDataUnsafe?.contact;
+                    if (contactData) {
+                        console.log('Found contact in initDataUnsafe:', contactData);
+                        this.processSharedContact(currentUserInfo, contactData);
+                    } else {
+                        console.log('No contact found, using fallback method');
+                        this.showContactRequestFallback(currentUserInfo);
+                    }
+                }, 1000);
+            } else {
+                console.log('No method available to retrieve contact, using fallback');
+                this.showContactRequestFallback(currentUserInfo);
+            }
+        } catch (error) {
+            console.error('Error in getContactData:', error);
+            this.showContactError('Failed to process contact information');
+        }
+    }
+
+    parseAndProcessContact(currentUserInfo, result) {
+        try {
+            console.log('Parsing contact result:', result);
+            
+            if (typeof result === 'string' && result.includes('contact=')) {
+                // Parse URL-encoded contact data
+                const contactParam = result.split('contact=')[1];
+                if (contactParam) {
+                    const decodedContact = decodeURIComponent(contactParam.split('&')[0]);
+                    const contactData = JSON.parse(decodedContact);
+                    console.log('Parsed contact data:', contactData);
+                    this.processSharedContact(currentUserInfo, contactData);
+                    return;
+                }
+            }
+            
+            // If result is already a contact object
+            if (result && result.phone_number) {
+                this.processSharedContact(currentUserInfo, result);
+                return;
+            }
+            
+            console.log('Unable to parse contact data:', result);
+            this.showContactError('Failed to parse contact information');
+        } catch (error) {
+            console.error('Error parsing contact:', error);
+            this.showContactError('Failed to parse contact information');
+        }
+    }
+
+    showContactRequestFallback(currentUserInfo) {
+        // Show a message that contact was requested but we couldn't retrieve it automatically
+        const phoneNumber = prompt('We detected you shared your contact! Please enter your phone number to continue:');
+        if (phoneNumber) {
+            const mockContact = {
+                phone_number: phoneNumber,
+                first_name: currentUserInfo.first_name,
+                last_name: currentUserInfo.last_name,
+                user_id: currentUserInfo.telegram_id
+            };
+            this.processSharedContact(currentUserInfo, mockContact);
+        } else {
+            this.handleContactDecline();
+        }
+    }
 
     processSharedContact(userInfo, contact) {
         // Store the shared contact
