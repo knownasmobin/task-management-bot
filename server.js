@@ -9,12 +9,24 @@ require('dotenv').config();
 // Import Telegram Bot
 const TelegramBot = require('./telegram-bot.js');
 
-// Redis for session management
-const redis = require('redis');
+// Redis for session management (optional)
+let redis = null;
 let redisClient = null;
+
+// Try to import Redis - if not available, use in-memory fallback
+try {
+    redis = require('redis');
+} catch (error) {
+    console.warn('Redis module not installed, using in-memory session storage');
+}
 
 // Initialize Redis connection
 async function initRedis() {
+    if (!redis) {
+        console.log('Redis module not available, using in-memory storage');
+        return;
+    }
+
     try {
         redisClient = redis.createClient({
             host: process.env.REDIS_HOST || 'localhost',
@@ -29,7 +41,7 @@ async function initRedis() {
         await redisClient.connect();
         console.log('Redis connected successfully');
     } catch (error) {
-        console.warn('Redis not available, using in-memory storage:', error.message);
+        console.warn('Redis connection failed, using in-memory storage:', error.message);
         // Fallback to in-memory storage
         redisClient = null;
     }
