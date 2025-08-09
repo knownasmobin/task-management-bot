@@ -372,7 +372,8 @@ Please review and approve or reject this request.`;
     async handleBotCommand(userId, command, args = []) {
         switch (command) {
             case '/start':
-                return await this.handleStartCommand(userId);
+                const startParameter = args.length > 0 ? args[0] : null;
+                return await this.handleStartCommand(userId, startParameter);
             case '/tasks':
                 return await this.handleTasksCommand(userId);
             case '/create':
@@ -386,15 +387,30 @@ Please review and approve or reject this request.`;
         }
     }
 
-    async handleStartCommand(userId) {
-        const message = `👋 *Welcome to Task Manager!*\n\n` +
-                       `Your personal task management assistant.\n\n` +
-                       `🚀 *Get Started:*\n` +
-                       `• Use the button below to open the app\n` +
-                       `• Create and manage tasks\n` +
-                       `• Collaborate with your team\n` +
-                       `• Get notifications for updates\n\n` +
-                       `💡 _Pro tip: You can use /tasks to quickly view your tasks!_`;
+    async handleStartCommand(userId, startParameter = null) {
+        let message;
+        
+        if (startParameter && startParameter.startsWith('invite_')) {
+            // Handle team invite
+            const inviterId = startParameter.replace('invite_', '');
+            message = `👋 *Team Invitation!*\n\n` +
+                     `You've been invited to join a Task Manager team!\n\n` +
+                     `🚀 *What's Next:*\n` +
+                     `• Tap "Open App" below to get started\n` +
+                     `• Share your contact when prompted\n` +
+                     `• Start collaborating on tasks together\n\n` +
+                     `💡 _Your team is waiting for you!_`;
+        } else {
+            // Regular start message
+            message = `👋 *Welcome to Task Manager!*\n\n` +
+                     `Your personal task management assistant.\n\n` +
+                     `🚀 *Get Started:*\n` +
+                     `• Use the button below to open the app\n` +
+                     `• Create and manage tasks\n` +
+                     `• Collaborate with your team\n` +
+                     `• Get notifications for updates\n\n` +
+                     `💡 _Pro tip: You can use /tasks to quickly view your tasks!_`;
+        }
 
         // Add single Open App button
         const keyboard = this.getWelcomeKeyboard();

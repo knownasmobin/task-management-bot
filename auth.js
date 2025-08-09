@@ -74,21 +74,29 @@ class AuthManager {
     }
 
     async handleRegularUserAuth(user) {
-        // Check if user has existing approval or needs contact sharing
-        // This logic stays the same but now checks server-side data
-        const hasSharedContact = this.hasUserSharedContact(user.telegram_id);
-        if (hasSharedContact) {
+        // With server-side authentication, the user role is already determined
+        // Server returns 'admin', 'user', or 'pending' based on authorization
+        
+        if (user.role === 'user') {
+            // User is already approved - authenticate directly
+            console.log('👤 Approved user authenticated:', user.first_name);
             this.authenticateUser(user);
-        } else {
-            // Check for pending approval or request contact sharing
+        } else if (user.role === 'pending') {
+            // User needs approval - check if they have pending request or need to share contact
             const pendingApprovals = JSON.parse(localStorage.getItem('pending_approvals') || '[]');
             const existingRequest = pendingApprovals.find(req => req.telegram_id === user.telegram_id);
             
             if (existingRequest) {
+                console.log('👤 User has pending approval request');
                 this.showAwaitingApprovalMessage(user);
             } else {
+                console.log('👤 New user - requesting contact sharing');
                 this.requestContactSharing(user);
             }
+        } else {
+            // Fallback for unknown role
+            console.log('👤 Unknown user role:', user.role, '- requesting contact sharing');
+            this.requestContactSharing(user);
         }
     }
 
@@ -658,10 +666,10 @@ class AuthManager {
                         <p>Phone: ${this.config.get('ADMIN_PHONE_NUMBER') || 'Contact admin'}</p>
                         
                         <div class="form-actions">
-                            <button type="button" class="btn-primary" onclick="auth.requestAccess()">
+                            <button type="button" class="btn-primary" id="requestAccessBtn">
                                 Request Access
                             </button>
-                            <button type="button" class="btn-secondary" onclick="location.reload()">
+                            <button type="button" class="btn-secondary" id="unauthorizedRetryBtn">
                                 Retry
                             </button>
                         </div>
@@ -671,6 +679,18 @@ class AuthManager {
         `;
         
         document.body.appendChild(unauthorizedModal);
+        
+        // Add event listeners for buttons
+        const requestAccessBtn = document.getElementById('requestAccessBtn');
+        const retryBtn = document.getElementById('unauthorizedRetryBtn');
+        
+        if (requestAccessBtn) {
+            requestAccessBtn.addEventListener('click', () => this.requestAccess());
+        }
+        
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => location.reload());
+        }
     }
 
     showAuthError(message) {
@@ -999,6 +1019,20 @@ class AuthManager {
             const pendingList = document.getElementById('pendingList');
             if (pendingList) {
                 pendingList.innerHTML = this.getPendingApprovalsHTML(pendingApprovals);
+                
+                // Add event listeners for approval buttons
+                pendingList.querySelectorAll('button[data-action]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const action = btn.dataset.action;
+                        const userId = btn.dataset.userId;
+                        
+                        if (action === 'approve') {
+                            this.approveUser(userId);
+                        } else if (action === 'reject') {
+                            this.rejectUser(userId);
+                        }
+                    });
+                });
             }
             
             // Update users list
@@ -1094,8 +1128,8 @@ class AuthManager {
                     <div class="approval-id">ID: ${request.telegram_id}</div>
                 </div>
                 <div class="approval-actions">
-                    <button onclick="auth.approveUser('${request.telegram_id}')" class="btn-small approve">✅</button>
-                    <button onclick="auth.rejectUser('${request.telegram_id}')" class="btn-small danger">❌</button>
+                    <button data-action="approve" data-user-id="${request.telegram_id}" class="btn-small approve">✅</button>
+                    <button data-action="reject" data-user-id="${request.telegram_id}" class="btn-small danger">❌</button>
                 </div>
             </div>
         `).join('');
@@ -1121,60 +1155,103 @@ class AuthManager {
     }
 
     async approveUser(telegramId) {
-        const pendingApprovals = JSON.parse(localStorage.getItem('pending_approvals') || '[]');
-        const userRequest = pendingApprovals.find(u => u.telegram_id.toString() === telegramId.toString());
-        
-        if (userRequest) {
-            // Add user to authorized users
-            const userInfo = {
-                telegram_id: userRequest.telegram_id,
-                first_name: userRequest.first_name,
-                last_name: userRequest.last_name,
-                username: userRequest.username,
-                phone_number: userRequest.phone_number,
-                role: 'user',
-                approved_by: this.currentUser.telegram_id,
-                approved_at: new Date().toISOString()
-            };
-            
-            if (this.config.addAuthorizedUser(userInfo)) {
-                // Remove from pending approvals
-                const updatedPending = pendingApprovals.filter(u => u.telegram_id.toString() !== telegramId.toString());
-                localStorage.setItem('pending_approvals', JSON.stringify(updatedPending));
+        try {
+            // Use server-side API for approval
+            const response = await fetch('/api/admin/approve-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Session-Token': localStorage.getItem('session_token')
+                },
+                body: JSON.stringify({
+                    userId: telegramId,
+                    approved: true
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
                 
-                // Real-time sync
-                if (window.realTimeSync) {
-                    window.realTimeSync.onUserChange('approve', userInfo);
+                // Also update localStorage for local consistency (fallback)
+                const pendingApprovals = JSON.parse(localStorage.getItem('pending_approvals') || '[]');
+                const userRequest = pendingApprovals.find(u => u.telegram_id.toString() === telegramId.toString());
+                
+                if (userRequest) {
+                    // Add user to authorized users locally
+                    const userInfo = {
+                        telegram_id: userRequest.telegram_id,
+                        first_name: userRequest.first_name,
+                        last_name: userRequest.last_name,
+                        username: userRequest.username,
+                        phone_number: userRequest.phone_number,
+                        role: 'user',
+                        approved_by: this.currentUser.telegram_id,
+                        approved_at: new Date().toISOString()
+                    };
+                    
+                    this.config.addAuthorizedUser(userInfo);
+                    
+                    // Remove from pending approvals
+                    const updatedPending = pendingApprovals.filter(u => u.telegram_id.toString() !== telegramId.toString());
+                    localStorage.setItem('pending_approvals', JSON.stringify(updatedPending));
+                    
+                    this.showToast(`User ${userRequest.first_name} approved! ✅`);
+                } else {
+                    this.showToast('User approved successfully! ✅');
                 }
                 
-                // Send approval notification
-                if (window.pushNotificationService) {
-                    await window.pushNotificationService.onUserApproved(userInfo);
-                }
-                
-                // Notify team of new member
-                if (window.pushNotificationService && window.taskManager) {
-                    await window.pushNotificationService.onTeamMemberJoined(userInfo, window.taskManager.teamMembers);
-                }
-                
-                this.showToast(`User ${userRequest.first_name} approved! ✅`);
                 this.refreshAdminDashboard();
+            } else {
+                const error = await response.json();
+                this.showToast(`Error: ${error.error}`, 'error');
             }
+        } catch (error) {
+            console.error('Error approving user:', error);
+            this.showToast('Failed to approve user', 'error');
         }
     }
 
-    rejectUser(telegramId) {
+    async rejectUser(telegramId) {
         if (confirm('Are you sure you want to reject this user request?')) {
-            const pendingApprovals = JSON.parse(localStorage.getItem('pending_approvals') || '[]');
-            const userRequest = pendingApprovals.find(u => u.telegram_id.toString() === telegramId.toString());
-            
-            if (userRequest) {
-                // Remove from pending approvals
-                const updatedPending = pendingApprovals.filter(u => u.telegram_id.toString() !== telegramId.toString());
-                localStorage.setItem('pending_approvals', JSON.stringify(updatedPending));
-                
-                this.showToast(`User ${userRequest.first_name} rejected`);
-                this.refreshAdminDashboard();
+            try {
+                // Use server-side API for rejection
+                const response = await fetch('/api/admin/approve-user', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-Token': localStorage.getItem('session_token')
+                    },
+                    body: JSON.stringify({
+                        userId: telegramId,
+                        approved: false
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Also update localStorage for local consistency (fallback)
+                    const pendingApprovals = JSON.parse(localStorage.getItem('pending_approvals') || '[]');
+                    const userRequest = pendingApprovals.find(u => u.telegram_id.toString() === telegramId.toString());
+                    
+                    if (userRequest) {
+                        // Remove from pending approvals
+                        const updatedPending = pendingApprovals.filter(u => u.telegram_id.toString() !== telegramId.toString());
+                        localStorage.setItem('pending_approvals', JSON.stringify(updatedPending));
+                        
+                        this.showToast(`User ${userRequest.first_name} rejected`);
+                    } else {
+                        this.showToast('User rejected successfully');
+                    }
+                    
+                    this.refreshAdminDashboard();
+                } else {
+                    const error = await response.json();
+                    this.showToast(`Error: ${error.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error rejecting user:', error);
+                this.showToast('Failed to reject user', 'error');
             }
         }
     }

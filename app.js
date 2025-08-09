@@ -812,11 +812,11 @@ class TaskManager {
                     ${deadlineInfo}
                     ${reminderInfo}
                     <div class="task-actions">
-                        <button onclick="taskManager.editTask('${task.id}')" class="task-action-btn">✏️</button>
-                        <button onclick="taskManager.toggleTaskStatus('${task.id}')" class="task-action-btn">
+                        <button data-action="edit" data-task-id="${task.id}" class="task-action-btn">✏️</button>
+                        <button data-action="toggle" data-task-id="${task.id}" class="task-action-btn">
                             ${task.status === 'completed' ? '↶' : '✓'}
                         </button>
-                        <button onclick="taskManager.deleteTask('${task.id}')" class="task-action-btn">🗑️</button>
+                        <button data-action="delete" data-task-id="${task.id}" class="task-action-btn">🗑️</button>
                     </div>
                 </div>
             `;
@@ -829,6 +829,27 @@ class TaskManager {
                     const taskId = item.dataset.taskId;
                     const task = this.tasks.find(t => t.id == taskId);
                     this.showTaskModal(task);
+                }
+            });
+        });
+
+        // Add event listeners for task action buttons
+        taskList.querySelectorAll('.task-action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent task item click
+                const action = btn.dataset.action;
+                const taskId = btn.dataset.taskId;
+                
+                switch (action) {
+                    case 'edit':
+                        this.editTask(taskId);
+                        break;
+                    case 'toggle':
+                        this.toggleTaskStatus(taskId);
+                        break;
+                    case 'delete':
+                        this.deleteTask(taskId);
+                        break;
                 }
             });
         });
@@ -941,20 +962,31 @@ class TaskManager {
         }
     }
 
-    inviteTeamMember() {
-        // Build share content - simple app URL sharing
-        const appUrl = window.location.origin;
+    async inviteTeamMember() {
+        try {
+            // Get bot username from server config
+            const config = new Config();
+            const botUsername = config.get('TELEGRAM_BOT_USERNAME');
 
-        const inviter = this.currentUser ? `${this.currentUser.first_name}${this.currentUser.last_name ? ' ' + this.currentUser.last_name : ''}` : 'A teammate';
-        const shareText = [
-            `👋 ${inviter} invited you to join our Task Manager mini app!`,
-            '',
-            `Open the app to view tasks and collaborate:`,
-            appUrl
-        ].join('\n');
-
-        // Create Telegram share link with app URL
-        const shareLink = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
+            const inviter = this.currentUser ? `${this.currentUser.first_name}${this.currentUser.last_name ? ' ' + this.currentUser.last_name : ''}` : 'A teammate';
+            
+            let shareLink;
+            let shareText;
+            
+            if (botUsername && botUsername !== 'YOUR_BOT_USERNAME_HERE') {
+                // Use bot username format - much cleaner for Telegram sharing
+                shareText = `👋 ${inviter} invited you to join our Task Manager team! Tap to start collaborating on tasks together.`;
+                shareLink = `https://t.me/${botUsername}?start=invite_${this.currentUser?.telegram_id || 'team'}`;
+            } else {
+                // Fallback to URL sharing if bot username not configured
+                const appUrl = window.location.origin;
+                shareText = [
+                    `👋 ${inviter} invited you to join our Task Manager mini app!`,
+                    '',
+                    `Open the app to view tasks and collaborate:`
+                ].join('\n');
+                shareLink = `https://t.me/share/url?url=${encodeURIComponent(appUrl)}&text=${encodeURIComponent(shareText)}`;
+            }
 
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
@@ -993,15 +1025,24 @@ class TaskManager {
         }
 
         // Browser fallback: Web Share API or clipboard
-    if (navigator.share) {
-            navigator.share({ title: 'Join our Task Manager', text: shareText, url: appUrl })
-                .catch(() => {/* ignore */});
+        if (navigator.share) {
+            navigator.share({ 
+                title: 'Join our Task Manager', 
+                text: shareText, 
+                url: shareLink 
+            }).catch(() => {/* ignore */});
         } else if (navigator.clipboard) {
-            navigator.clipboard.writeText(`${shareText}\n${appUrl}`)
+            const clipboardText = botUsername ? shareText : `${shareText}\n${shareLink}`;
+            navigator.clipboard.writeText(clipboardText)
                 .then(() => Utils.showToast('Invite copied to clipboard'))
                 .catch(() => window.open(shareLink, '_blank'));
         } else {
             window.open(shareLink, '_blank');
+        }
+        
+        } catch (error) {
+            console.error('Error creating invite:', error);
+            Utils.showToast('Failed to create invite', 'error');
         }
     }
 

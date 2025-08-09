@@ -85,10 +85,14 @@ async function initServices() {
 // Session management functions
 async function createSession(telegramId, userInfo) {
     const sessionId = `session:${telegramId}:${Date.now()}`;
+    const isAdmin = telegramId.toString() === (process.env.ADMIN_TELEGRAM_ID || '');
+    const isAuthorized = isAdmin || (telegramBot && telegramBot.isUserAuthorized(telegramId));
+    
     const sessionData = {
         telegram_id: telegramId,
         user_info: userInfo,
-        is_admin: telegramId.toString() === (process.env.ADMIN_TELEGRAM_ID || ''),
+        is_admin: isAdmin,
+        is_authorized: isAuthorized,
         created_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
     };
@@ -305,8 +309,9 @@ app.post('/api/auth/telegram', async (req, res) => {
                 first_name: user.first_name,
                 last_name: user.last_name,
                 username: user.username,
-                role: sessionData.is_admin ? 'admin' : 'user',
-                is_admin: sessionData.is_admin
+                role: sessionData.is_admin ? 'admin' : (sessionData.is_authorized ? 'user' : 'pending'),
+                is_admin: sessionData.is_admin,
+                is_authorized: sessionData.is_authorized
             }
         });
 
@@ -379,6 +384,55 @@ app.post('/api/notify/user-request', async (req, res) => {
     } catch (error) {
         console.error('Error sending user request notification:', error);
         res.status(500).json({ error: 'Failed to send notification' });
+    }
+});
+
+// User approval endpoint
+app.post('/api/admin/approve-user', verifySession, requireAdmin, async (req, res) => {
+    try {
+        if (!telegramBot) {
+            return res.status(503).json({ error: 'Telegram bot not available' });
+        }
+
+        const { userId, approved } = req.body;
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID is required' });
+        }
+
+        // Get user request data from bot storage
+        const userRequest = await telegramBot.getUserRequestData(userId);
+        if (!userRequest) {
+            return res.status(404).json({ error: 'User request not found' });
+        }
+
+        if (approved) {
+            // Approve user in bot storage
+            await telegramBot.approveUser(userRequest);
+            
+            // Send approval notification to user
+            await telegramBot.sendUserApprovalNotification(
+                parseInt(userId), 
+                true, 
+                userRequest.first_name
+            );
+            
+            res.json({ success: true, message: 'User approved successfully' });
+        } else {
+            // Reject user
+            await telegramBot.rejectUser(userId);
+            
+            // Send rejection notification to user
+            await telegramBot.sendUserApprovalNotification(
+                parseInt(userId), 
+                false, 
+                userRequest.first_name
+            );
+            
+            res.json({ success: true, message: 'User rejected successfully' });
+        }
+    } catch (error) {
+        console.error('Error processing user approval:', error);
+        res.status(500).json({ error: 'Failed to process approval' });
     }
 });
 
