@@ -170,10 +170,10 @@ class AuthManager {
                         </div>
                         
                         <div class="contact-actions">
-                            <button class="btn-primary contact-share-btn" onclick="auth.handleContactRequest()">
+                            <button class="btn-primary contact-share-btn" id="contactShareBtn">
                                 📱 Share My Contact
                             </button>
-                            <button class="btn-secondary" onclick="auth.handleContactDecline()">
+                            <button class="btn-secondary" id="contactDeclineBtn">
                                 Cancel
                             </button>
                         </div>
@@ -187,6 +187,18 @@ class AuthManager {
         `;
         
         document.body.appendChild(modal);
+        
+        // Add event listeners for the buttons
+        const shareBtn = document.getElementById('contactShareBtn');
+        const declineBtn = document.getElementById('contactDeclineBtn');
+        
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => this.handleContactRequest());
+        }
+        
+        if (declineBtn) {
+            declineBtn.addEventListener('click', () => this.handleContactDecline());
+        }
     }
 
     async handleContactRequest(userInfo = null) {
@@ -335,7 +347,7 @@ class AuthManager {
                         </div>
                         
                         <div class="form-actions">
-                            <button class="btn-primary" onclick="window.close()">
+                            <button class="btn-primary" id="awaitingOkBtn">
                                 OK
                             </button>
                         </div>
@@ -345,6 +357,12 @@ class AuthManager {
         `;
         
         document.body.appendChild(modal);
+        
+        // Add event listener for OK button
+        const okBtn = document.getElementById('awaitingOkBtn');
+        if (okBtn) {
+            okBtn.addEventListener('click', () => window.close());
+        }
     }
 
     showAccessDeniedMessage(reason) {
@@ -361,10 +379,10 @@ class AuthManager {
                         <p>This app requires contact sharing to function properly.</p>
                         
                         <div class="form-actions">
-                            <button class="btn-primary" onclick="location.reload()">
+                            <button class="btn-primary" id="accessDeniedRetryBtn">
                                 Try Again
                             </button>
-                            <button class="btn-secondary" onclick="window.close()">
+                            <button class="btn-secondary" id="accessDeniedCloseBtn">
                                 Close
                             </button>
                         </div>
@@ -374,6 +392,18 @@ class AuthManager {
         `;
         
         document.body.appendChild(modal);
+        
+        // Add event listeners
+        const retryBtn = document.getElementById('accessDeniedRetryBtn');
+        const closeBtn = document.getElementById('accessDeniedCloseBtn');
+        
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => location.reload());
+        }
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => window.close());
+        }
     }
 
     showLoginForm() {
@@ -416,7 +446,7 @@ class AuthManager {
                         </div>
                         
                         <div class="form-actions">
-                            <button type="button" class="btn-primary" onclick="auth.handleManualLogin()">
+                            <button type="button" class="btn-primary" id="manualLoginBtn">
                                 Login
                             </button>
                         </div>
@@ -430,6 +460,12 @@ class AuthManager {
         `;
         
         document.body.appendChild(loginModal);
+        
+        // Add event listener for login button
+        const loginBtn = document.getElementById('manualLoginBtn');
+        if (loginBtn) {
+            loginBtn.addEventListener('click', () => this.handleManualLogin());
+        }
     }
 
     handleManualLogin() {
@@ -517,7 +553,7 @@ class AuthManager {
                         <p>${message}</p>
                         <br>
                         <div class="form-actions">
-                            <button type="button" class="btn-primary" onclick="location.reload()">
+                            <button type="button" class="btn-primary" id="authErrorRetryBtn">
                                 Retry
                             </button>
                         </div>
@@ -527,6 +563,12 @@ class AuthManager {
         `;
         
         document.body.appendChild(errorModal);
+        
+        // Add event listener for retry button
+        const retryBtn = document.getElementById('authErrorRetryBtn');
+        if (retryBtn) {
+            retryBtn.addEventListener('click', () => location.reload());
+        }
     }
 
     showAuthenticatedInterface() {
