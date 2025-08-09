@@ -136,6 +136,9 @@ class AuthManager {
     }
 
     showContactRequestModal(userInfo) {
+        // Store userInfo for later use by modal buttons
+        this.pendingContactUserInfo = userInfo;
+        
         const modal = document.createElement('div');
         modal.className = 'modal-overlay active';
         modal.id = 'contactRequestModal';
@@ -186,7 +189,9 @@ class AuthManager {
         document.body.appendChild(modal);
     }
 
-    async handleContactRequest(userInfo) {
+    async handleContactRequest(userInfo = null) {
+        // Use passed userInfo or fallback to stored one
+        const currentUserInfo = userInfo || this.pendingContactUserInfo;
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             
@@ -194,7 +199,7 @@ class AuthManager {
                 // Request contact using Telegram WebApp API
                 tg.requestContact((contact) => {
                     if (contact && contact.phone_number) {
-                        this.processSharedContact(userInfo, contact);
+                        this.processSharedContact(currentUserInfo, contact);
                     } else {
                         this.showContactError('Contact sharing was cancelled');
                     }
@@ -209,11 +214,11 @@ class AuthManager {
             if (phoneNumber) {
                 const mockContact = {
                     phone_number: phoneNumber,
-                    first_name: userInfo.first_name,
-                    last_name: userInfo.last_name,
-                    user_id: userInfo.telegram_id
+                    first_name: currentUserInfo.first_name,
+                    last_name: currentUserInfo.last_name,
+                    user_id: currentUserInfo.telegram_id
                 };
-                this.processSharedContact(userInfo, mockContact);
+                this.processSharedContact(currentUserInfo, mockContact);
             } else {
                 this.handleContactDecline();
             }
