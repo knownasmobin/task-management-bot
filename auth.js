@@ -1037,11 +1037,56 @@ document.addEventListener('DOMContentLoaded', () => {
             get: (key) => {
                 const defaults = {
                     'ADMIN_USERNAME': 'admin',
-                    'ADMIN_PHONE_NUMBER': 'Contact through Telegram'
+                    'ADMIN_PHONE_NUMBER': 'Contact through Telegram',
+                    'ADMIN_TELEGRAM_ID': localStorage.getItem('admin_telegram_id') || ''
                 };
                 return defaults[key] || false;
             },
-            getAuthorizedUsers: () => JSON.parse(localStorage.getItem('authorized_users') || '[]')
+            getAuthorizedUsers: () => JSON.parse(localStorage.getItem('authorized_users') || '[]'),
+            isAdmin: (telegramId) => {
+                const adminId = localStorage.getItem('admin_telegram_id') || '';
+                return adminId && telegramId && adminId.toString() === telegramId.toString();
+            },
+            isValidUser: (telegramId) => {
+                // Check if admin first
+                if (config.isAdmin(telegramId)) return true;
+                
+                // Check authorized users
+                const authorizedUsers = JSON.parse(localStorage.getItem('authorized_users') || '[]');
+                return authorizedUsers.some(user => user.telegram_id.toString() === telegramId.toString());
+            },
+            addAuthorizedUser: (userInfo) => {
+                const users = config.getAuthorizedUsers();
+                const existingUser = users.find(u => u.telegram_id === userInfo.telegram_id);
+                
+                if (!existingUser) {
+                    users.push({
+                        ...userInfo,
+                        added_at: new Date().toISOString(),
+                        status: 'active'
+                    });
+                    localStorage.setItem('authorized_users', JSON.stringify(users));
+                    return true;
+                }
+                return false;
+            },
+            removeAuthorizedUser: (telegramId) => {
+                const users = config.getAuthorizedUsers();
+                const filteredUsers = users.filter(u => u.telegram_id.toString() !== telegramId.toString());
+                localStorage.setItem('authorized_users', JSON.stringify(filteredUsers));
+                return users.length !== filteredUsers.length;
+            },
+            updateUserStatus: (telegramId, status) => {
+                const users = config.getAuthorizedUsers();
+                const user = users.find(u => u.telegram_id.toString() === telegramId.toString());
+                if (user) {
+                    user.status = status;
+                    user.updated_at = new Date().toISOString();
+                    localStorage.setItem('authorized_users', JSON.stringify(users));
+                    return true;
+                }
+                return false;
+            }
         };
         auth = new AuthManager(config);
         window.auth = auth;
