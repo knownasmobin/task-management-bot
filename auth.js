@@ -63,8 +63,18 @@ class AuthManager {
                         this.requestContactSharing(userInfo);
                     }
                 } else {
-                    // New user - request contact sharing for registration
-                    this.requestContactSharing(userInfo);
+                    // Check if user already has a pending approval request
+                    const pendingApprovals = JSON.parse(localStorage.getItem('pending_approvals') || '[]');
+                    const existingRequest = pendingApprovals.find(req => req.telegram_id === user.id);
+                    
+                    if (existingRequest) {
+                        // User already requested approval, show waiting message
+                        console.log('User has existing approval request:', existingRequest);
+                        this.showAwaitingApprovalMessage(userInfo);
+                    } else {
+                        // New user - request contact sharing for registration
+                        this.requestContactSharing(userInfo);
+                    }
                 }
             } else {
                 throw new Error('Invalid Telegram authentication data');
@@ -387,8 +397,18 @@ class AuthManager {
     }
 
     submitForAdminApproval(userInfo) {
-        // Store pending approval request
+        // Check if user already has a pending approval request
         const pendingApprovals = JSON.parse(localStorage.getItem('pending_approvals') || '[]');
+        const existingRequest = pendingApprovals.find(req => req.telegram_id === userInfo.telegram_id);
+        
+        if (existingRequest) {
+            console.log('User already has pending approval request:', existingRequest);
+            // Show existing approval message instead of creating new one
+            this.showAwaitingApprovalMessage(userInfo);
+            return;
+        }
+
+        // Create new approval request
         const approvalRequest = {
             ...userInfo,
             requested_at: new Date().toISOString(),
@@ -455,7 +475,18 @@ class AuthManager {
         // Add event listener for OK button
         const okBtn = document.getElementById('awaitingOkBtn');
         if (okBtn) {
-            okBtn.addEventListener('click', () => window.close());
+            okBtn.addEventListener('click', () => {
+                // Close the modal
+                modal.remove();
+                
+                // Try to close the web app if possible
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.close();
+                } else {
+                    // Fallback - try to close window
+                    window.close();
+                }
+            });
         }
     }
 
