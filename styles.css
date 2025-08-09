@@ -461,7 +461,8 @@ body {
 }
 
 .modal {
-    background: white;
+    background: var(--card);
+    color: var(--text);
     border-radius: 16px;
     width: 90%;
     max-width: 400px;
@@ -484,7 +485,7 @@ body {
 }
 
 .modal-header h3 {
-    color: #2c3e50;
+    color: var(--text);
     font-size: 1.3rem;
     font-weight: 600;
 }
@@ -927,11 +928,12 @@ body {
 }
 
 .approval-info {
-    background: #f8f9fa;
+    background: var(--bg-soft);
     border-radius: 8px;
     padding: 16px;
     margin: 16px 0;
     text-align: left;
+    border: 1px solid rgba(148,163,184,0.1);
 }
 
 .approval-info p {

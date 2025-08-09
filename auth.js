@@ -1167,6 +1167,53 @@ class AuthManager {
             }
         }
     }
+
+    showToast(message, duration = 3000) {
+        // Remove any existing toast
+        const existingToast = document.querySelector('.auth-toast');
+        if (existingToast) {
+            existingToast.remove();
+        }
+
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = 'auth-toast';
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10001;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        toast.textContent = message;
+
+        // Add to DOM
+        document.body.appendChild(toast);
+
+        // Show with animation
+        setTimeout(() => {
+            toast.style.opacity = '1';
+        }, 10);
+
+        // Auto remove
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }, duration);
+    }
 }
 
 // Initialize auth when DOM is loaded
