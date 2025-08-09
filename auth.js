@@ -208,11 +208,10 @@ class AuthManager {
             const tg = window.Telegram.WebApp;
             
             try {
-                // Check if modern requestContact method exists
+                // Use callback-based approach - this is how Telegram WebApp API works
                 if (typeof tg.requestContact === 'function') {
-                    // Try modern async approach first
-                    tg.requestContact().then((contact) => {
-                        console.log('Contact received (modern API):', contact);
+                    tg.requestContact((contact) => {
+                        console.log('Contact received:', contact);
                         
                         if (contact && contact.phone_number) {
                             this.processSharedContact(currentUserInfo, contact);
@@ -220,14 +219,10 @@ class AuthManager {
                             console.log('Contact sharing failed or cancelled:', contact);
                             this.showContactError('Contact sharing was cancelled');
                         }
-                    }).catch((error) => {
-                        console.error('Modern contact request failed:', error);
-                        // Fallback to callback approach
-                        this.tryCallbackContactRequest(tg, currentUserInfo);
                     });
                 } else {
-                    // Fallback to callback approach
-                    this.tryCallbackContactRequest(tg, currentUserInfo);
+                    console.error('requestContact method not available');
+                    this.showContactError('Contact sharing not supported in this version');
                 }
             } catch (error) {
                 console.error('Contact request error:', error);
@@ -250,24 +245,6 @@ class AuthManager {
         }
     }
 
-    tryCallbackContactRequest(tg, currentUserInfo) {
-        try {
-            // Original callback approach
-            tg.requestContact((contact) => {
-                console.log('Contact received (callback API):', contact);
-                
-                if (contact && contact.phone_number) {
-                    this.processSharedContact(currentUserInfo, contact);
-                } else {
-                    console.log('Contact sharing failed or cancelled:', contact);
-                    this.showContactError('Contact sharing was cancelled');
-                }
-            });
-        } catch (error) {
-            console.error('Callback contact request failed:', error);
-            this.showContactError('Unable to request contact. Please try again.');
-        }
-    }
 
     processSharedContact(userInfo, contact) {
         // Store the shared contact
