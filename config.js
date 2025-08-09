@@ -4,35 +4,38 @@ class Config {
     }
 
     loadConfig() {
+        // Check if we're in browser or Node.js environment
+        const isNode = typeof process !== 'undefined' && process.env;
+        
         // Default configuration
         this.config = {
             // Telegram Bot Configuration
-            TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || '',
-            TELEGRAM_BOT_USERNAME: process.env.TELEGRAM_BOT_USERNAME || '',
+            TELEGRAM_BOT_TOKEN: isNode ? (process.env.TELEGRAM_BOT_TOKEN || '') : '',
+            TELEGRAM_BOT_USERNAME: isNode ? (process.env.TELEGRAM_BOT_USERNAME || '') : '',
             
             // Admin Configuration
-            ADMIN_TELEGRAM_ID: process.env.ADMIN_TELEGRAM_ID || '',
-            ADMIN_PHONE_NUMBER: process.env.ADMIN_PHONE_NUMBER || '',
-            ADMIN_USERNAME: process.env.ADMIN_USERNAME || '',
+            ADMIN_TELEGRAM_ID: isNode ? (process.env.ADMIN_TELEGRAM_ID || '') : '',
+            ADMIN_PHONE_NUMBER: isNode ? (process.env.ADMIN_PHONE_NUMBER || '') : '',
+            ADMIN_USERNAME: isNode ? (process.env.ADMIN_USERNAME || '') : '',
             
             // App Configuration
-            APP_NAME: process.env.APP_NAME || 'Task Manager',
-            APP_URL: process.env.APP_URL || window.location.origin,
-            APP_VERSION: process.env.APP_VERSION || '1.0.0',
+            APP_NAME: isNode ? (process.env.APP_NAME || 'Task Manager') : 'Task Manager',
+            APP_URL: isNode ? (process.env.APP_URL || '') : (typeof window !== 'undefined' ? window.location.origin : ''),
+            APP_VERSION: isNode ? (process.env.APP_VERSION || '1.0.0') : '1.0.0',
             
             // Security Configuration
-            JWT_SECRET: process.env.JWT_SECRET || 'fallback-secret-key',
-            ENCRYPTION_KEY: process.env.ENCRYPTION_KEY || 'fallback-encryption-key',
+            JWT_SECRET: isNode ? (process.env.JWT_SECRET || 'fallback-secret-key') : 'fallback-secret-key',
+            ENCRYPTION_KEY: isNode ? (process.env.ENCRYPTION_KEY || 'fallback-encryption-key') : 'fallback-encryption-key',
             
             // Features Configuration
-            ENABLE_PHONE_VERIFICATION: process.env.ENABLE_PHONE_VERIFICATION === 'true',
-            ENABLE_USER_REGISTRATION: process.env.ENABLE_USER_REGISTRATION === 'true',
-            REQUIRE_ADMIN_APPROVAL: process.env.REQUIRE_ADMIN_APPROVAL !== 'false',
-            MAX_TEAM_SIZE: parseInt(process.env.MAX_TEAM_SIZE) || 50,
+            ENABLE_PHONE_VERIFICATION: isNode ? (process.env.ENABLE_PHONE_VERIFICATION === 'true') : false,
+            ENABLE_USER_REGISTRATION: isNode ? (process.env.ENABLE_USER_REGISTRATION === 'true') : false,
+            REQUIRE_ADMIN_APPROVAL: isNode ? (process.env.REQUIRE_ADMIN_APPROVAL !== 'false') : true,
+            MAX_TEAM_SIZE: isNode ? (parseInt(process.env.MAX_TEAM_SIZE) || 50) : 50,
             
             // API Configuration
-            API_BASE_URL: process.env.API_BASE_URL || 'https://api.telegram.org/bot',
-            WEBHOOK_URL: process.env.WEBHOOK_URL || ''
+            API_BASE_URL: isNode ? (process.env.API_BASE_URL || 'https://api.telegram.org/bot') : 'https://api.telegram.org/bot',
+            WEBHOOK_URL: isNode ? (process.env.WEBHOOK_URL || '') : ''
         };
 
         // For client-side, we'll use a simpler approach with localStorage for config
